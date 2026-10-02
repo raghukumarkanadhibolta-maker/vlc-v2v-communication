@@ -1,0 +1,6 @@
+Scenario,Distance_m,AmbientLight_lux,Pedestrian_Blocked,Path_Loss_dB,Effective_SNR_dB,OOK_FEC_Success_Rate,OOK_Throughput_kbps,OOK_Latency_ms,BPSK_FEC_Success_Rate,BPSK_Throughput_kbps,BPSK_Latency_ms,Selected_Modulation,Selection_Reason
+"Mild Poor (Medium Range, Clear LOS)",1.6,35.0,0,-33.2,15.2,1.0,500.0,10.92,1.0,434.8,10.73,OOK + FEC,Both achieve 100% reliability; OOK delivers 500.0 kbps vs 434.8 kbps (15% higher throughput).
+"Moderate Poor (Corridor, Elevated Lux)",1.8,350.0,0,-33.5,15.0,1.0,500.0,10.75,1.0,434.8,10.87,OOK + FEC,Both achieve 100% reliability; OOK delivers 500.0 kbps vs 434.8 kbps (15% higher throughput).
+Severe Blockage (Pedestrian Crosswalk),1.4,80.0,1,-40.7,10.0,1.0,500.0,10.94,1.0,434.8,10.78,OOK + FEC,Both achieve 100% reliability; OOK delivers 500.0 kbps vs 434.8 kbps (15% higher throughput).
+Deep Fade (Long Distance + Large Angles),2.4,250.0,0,-36.7,12.8,1.0,500.0,11.13,1.0,434.8,11.2,OOK + FEC,Both achieve 100% reliability; OOK delivers 500.0 kbps vs 434.8 kbps (15% higher throughput).
+Extreme Outage (Long Range + Blocked + Sunlight),2.6,1200.0,1,-46.3,6.1,1.0,500.0,11.21,1.0,434.8,11.61,OOK + FEC,Both achieve 100% reliability; OOK delivers 500.0 kbps vs 434.8 kbps (15% higher throughput).

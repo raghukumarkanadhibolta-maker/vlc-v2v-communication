@@ -1,0 +1,101 @@
+================================================================================
+Model: Logistic Regression
+Train Sessions: [1, 2, 3, 4, 7, 8, 9, 11, 12] (N=5227)
+Test Sessions:  [5, 6, 10] (N=1697)
+Confusion Matrix: TN=763, FP=106, FN=328, TP=500
+ROC-AUC: 0.7831
+--------------------------------------------------------------------------------
+                  precision    recall  f1-score   support
+
+Poor Channel (0)       0.70      0.88      0.78       869
+Good Channel (1)       0.83      0.60      0.70       828
+
+        accuracy                           0.74      1697
+       macro avg       0.76      0.74      0.74      1697
+    weighted avg       0.76      0.74      0.74      1697
+
+
+================================================================================
+Model: Decision Tree
+Train Sessions: [1, 2, 3, 4, 7, 8, 9, 11, 12] (N=5227)
+Test Sessions:  [5, 6, 10] (N=1697)
+Confusion Matrix: TN=492, FP=377, FN=88, TP=740
+ROC-AUC: 0.8724
+--------------------------------------------------------------------------------
+                  precision    recall  f1-score   support
+
+Poor Channel (0)       0.85      0.57      0.68       869
+Good Channel (1)       0.66      0.89      0.76       828
+
+        accuracy                           0.73      1697
+       macro avg       0.76      0.73      0.72      1697
+    weighted avg       0.76      0.73      0.72      1697
+
+
+================================================================================
+Model: Random Forest
+Train Sessions: [1, 2, 3, 4, 7, 8, 9, 11, 12] (N=5227)
+Test Sessions:  [5, 6, 10] (N=1697)
+Confusion Matrix: TN=794, FP=75, FN=221, TP=607
+ROC-AUC: 0.9100
+--------------------------------------------------------------------------------
+                  precision    recall  f1-score   support
+
+Poor Channel (0)       0.78      0.91      0.84       869
+Good Channel (1)       0.89      0.73      0.80       828
+
+        accuracy                           0.83      1697
+       macro avg       0.84      0.82      0.82      1697
+    weighted avg       0.83      0.83      0.82      1697
+
+
+================================================================================
+Model: Gradient Boosting
+Train Sessions: [1, 2, 3, 4, 7, 8, 9, 11, 12] (N=5227)
+Test Sessions:  [5, 6, 10] (N=1697)
+Confusion Matrix: TN=695, FP=174, FN=151, TP=677
+ROC-AUC: 0.8790
+--------------------------------------------------------------------------------
+                  precision    recall  f1-score   support
+
+Poor Channel (0)       0.82      0.80      0.81       869
+Good Channel (1)       0.80      0.82      0.81       828
+
+        accuracy                           0.81      1697
+       macro avg       0.81      0.81      0.81      1697
+    weighted avg       0.81      0.81      0.81      1697
+
+
+================================================================================
+Model: XGBoost
+Train Sessions: [1, 2, 3, 4, 7, 8, 9, 11, 12] (N=5227)
+Test Sessions:  [5, 6, 10] (N=1697)
+Confusion Matrix: TN=708, FP=161, FN=155, TP=673
+ROC-AUC: 0.8918
+--------------------------------------------------------------------------------
+                  precision    recall  f1-score   support
+
+Poor Channel (0)       0.82      0.81      0.82       869
+Good Channel (1)       0.81      0.81      0.81       828
+
+        accuracy                           0.81      1697
+       macro avg       0.81      0.81      0.81      1697
+    weighted avg       0.81      0.81      0.81      1697
+
+
+================================================================================
+Model: Naive Baseline
+Train Sessions: [1, 2, 3, 4, 7, 8, 9, 11, 12] (N=5227)
+Test Sessions:  [5, 6, 10] (N=1697)
+Confusion Matrix: TN=869, FP=0, FN=828, TP=0
+ROC-AUC: 0.5000
+--------------------------------------------------------------------------------
+                  precision    recall  f1-score   support
+
+Poor Channel (0)       0.51      1.00      0.68       869
+Good Channel (1)       0.00      0.00      0.00       828
+
+        accuracy                           0.51      1697
+       macro avg       0.26      0.50      0.34      1697
+    weighted avg       0.26      0.51      0.35      1697
+
