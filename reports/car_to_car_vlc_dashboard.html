@@ -264,6 +264,27 @@
             box-shadow: 0 6px 14px rgba(2, 132, 199, 0.35);
             transform: translateY(-1px);
         }
+        .btn-stop {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fca5a5;
+            padding: 11px 14px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.84rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .btn-stop:hover {
+            background: #fecaca;
+            color: #b91c1c;
+            border-color: #f87171;
+            transform: translateY(-1px);
+        }
         .btn-reset {
             background: var(--bg-card-subtle);
             color: var(--text-secondary);
@@ -1559,11 +1580,14 @@
 
                     <!-- Action Buttons -->
                     <div class="action-button-group">
-                        <button class="btn-transmit" onclick="executeTransmission()">
-                            <span>⚡</span> TRANSMIT SAFETY MESSAGE
+                        <button class="btn-transmit" id="btnStartSimulation" onclick="executeTransmission()">
+                            <span>⚡</span> START SIMULATION
                         </button>
-                        <button class="btn-reset" onclick="applyPreset(1)">
-                            <span>🔄</span> Reset
+                        <button class="btn-stop" id="btnStopSimulation" onclick="stopSimulation()">
+                            <span>⏹️</span> STOP
+                        </button>
+                        <button class="btn-reset" id="btnResetSimulation" onclick="resetSimulation()">
+                            <span>🔄</span> RESET
                         </button>
                     </div>
                 </div>
@@ -1577,6 +1601,15 @@
                         <div class="highway-status-badge status-optimal" id="linkStatusBadge">
                             <span>●</span> <span id="linkStatusText">OPTICAL LINK ACTIVE &bull; LOS CLEAR</span>
                         </div>
+                    </div>
+
+                    <!-- AUTOMATIC MODULATION SELECTION BANNER -->
+                    <div class="modulation-decision-banner" id="modDecisionBanner" style="display: flex; align-items: center; justify-content: space-between; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px 16px; margin: 10px 0 14px 0; color: #f8fafc; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.1rem;">⚡</span>
+                            <span id="bannerStatusPhase" style="font-size: 0.86rem; font-weight: 700; color: #f59e0b; letter-spacing: 0.3px;">POOR CHANNEL — COMPARING MODULATIONS</span>
+                        </div>
+                        <div id="bannerSelectedMethod" style="font-size: 0.88rem; font-weight: 800; color: #38bdf8; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); padding: 5px 14px; border-radius: 6px;">SELECTED METHOD: BPSK + FEC</div>
                     </div>
 
                     <!-- THE HIGHWAY SCENE -->
@@ -1707,6 +1740,7 @@
                             <div class="dump-item"><span class="dump-key">Selected Mode  :</span><span class="dump-value" id="dumpModScheme">OOK + FEC (Rate 1/2)</span></div>
                             <div class="dump-item"><span class="dump-key">FEC Protection :</span><span class="dump-value" id="dumpFecStatus">ON (Rate 1/2)</span></div>
                             <div class="dump-item"><span class="dump-key">Packet Check   :</span><span class="dump-value highlight-green" id="dumpCrcCheck">0x3E19 (VERIFIED)</span></div>
+                            <div class="dump-item" style="grid-column: span 2;"><span class="dump-key">Binary Payload :</span><span class="dump-value" id="dumpBinaryBits" style="font-family: Consolas, monospace; font-size: 0.72rem; letter-spacing: 0.5px; color: #38bdf8; word-break: break-all;">01000010 01010010 01000001 01001011 01000101</span></div>
                         </div>
                     </div>
                 </div>
@@ -1740,19 +1774,23 @@
                     <!-- EMERGENCY SAFETY ALERT BOX -->
                     <div class="safety-alert-box emergency" id="safetyAlertBox">
                         <div class="alert-header-row">
-                            <span id="alertHeaderCategory">🔊 EMERGENCY RECEIVED</span>
+                            <span id="alertHeaderCategory">🚨 EMERGENCY MESSAGE RECEIVED</span>
                             <span id="alertTimestamp">12:00:00</span>
                         </div>
                         <div class="alert-title-main" id="alertEventTitle">
-                            BRAKE ALERT
+                            BRAKE / SAFETY MESSAGE
                         </div>
                         <div class="alert-advice-text" id="alertAdvice">
                             Immediate deceleration detected from lead vehicle. Prepare to brake.
                         </div>
-                        <div class="alert-footer-meta">
-                            <span>Distance: <strong id="metaDist">0.85 m</strong></span>
-                            <span>Source: <strong>CAR A</strong></span>
-                            <span>Status: <strong id="metaCrc">VERIFIED</strong></span>
+                        <div class="alert-footer-meta" id="alertFooterMeta" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; font-size: 0.78rem;">
+                            <span>Message: <strong id="carBRecvMsg">BRAKE ALERT</strong></span>
+                            <span>Selected Mod: <strong id="carBRecvMod">OOK + FEC</strong></span>
+                            <span>Channel Quality: <strong id="carBRecvChan">GOOD</strong></span>
+                            <span>Distance: <strong id="carBRecvDist">0.85 m</strong></span>
+                            <span>BER: <strong id="carBRecvBer">0.000000</strong></span>
+                            <span>Packet Success: <strong id="carBRecvSuccess">100.0%</strong></span>
+                            <span style="grid-column: span 2;">Decoded Binary: <strong id="carBRecvBinary" style="font-family: Consolas, monospace; font-size: 0.7rem; color: #15803d; word-break: break-all;">01000010 01010010 01000001 01001011 01000101</strong></span>
                         </div>
                     </div>
 
@@ -1870,42 +1908,42 @@
                 <table class="comparative-results-table">
                     <thead>
                         <tr>
-                            <th>Simulation Performance Metric</th>
-                            <th>OOK + FEC (Rate 1/2)</th>
-                            <th>BPSK + FEC (Rate 1/2 Convolutional)</th>
-                            <th>ML Decision / Operational Advantage</th>
+                            <th>Metric</th>
+                            <th>OOK + FEC</th>
+                            <th>BPSK + FEC</th>
+                            <th>Operational Advantage</th>
                         </tr>
                     </thead>
                     <tbody id="tblComparativeBody">
                         <tr id="rowCmpBer">
-                            <td><strong>Bit Error Rate (BER)</strong></td>
+                            <td><strong>BER</strong></td>
                             <td id="tdOokBer">0.000000</td>
                             <td id="tdBpskBer">0.000000</td>
                             <td id="tdAdvBer"><span class="badge-table-tag win">OOK Optimal in Good LOS</span></td>
                         </tr>
+                        <tr id="rowCmpSnr">
+                            <td><strong>SNR</strong></td>
+                            <td id="tdOokSnr">14.0 dB</td>
+                            <td id="tdBpskSnr">17.0 dB</td>
+                            <td id="tdAdvSnr"><span class="badge-table-tag win">High Optical SNR</span></td>
+                        </tr>
                         <tr id="rowCmpSuccess">
-                            <td><strong>Packet Delivery Success</strong></td>
-                            <td id="tdOokSuccess">100.0% (PER 0.000)</td>
-                            <td id="tdBpskSuccess">100.0% (PER 0.000)</td>
+                            <td><strong>Packet Success</strong></td>
+                            <td id="tdOokSuccess">100.0%</td>
+                            <td id="tdBpskSuccess">100.0%</td>
                             <td id="tdAdvSuccess"><span class="badge-table-tag win">100% Reliable Delivery</span></td>
                         </tr>
+                        <tr id="rowCmpLatency">
+                            <td><strong>Latency</strong></td>
+                            <td id="tdOokLatency">0.53 ms</td>
+                            <td id="tdBpskLatency">10.65 ms</td>
+                            <td id="tdAdvLatency"><span class="badge-table-tag win">OOK Instantaneous (0.53 ms)</span></td>
+                        </tr>
                         <tr id="rowCmpThroughput">
-                            <td><strong>Net Data Throughput</strong></td>
+                            <td><strong>Throughput</strong></td>
                             <td id="tdOokTput">1000.0 kbps</td>
                             <td id="tdBpskTput">434.8 kbps</td>
                             <td id="tdAdvTput"><span class="badge-table-tag win">OOK +130% Higher Throughput</span></td>
-                        </tr>
-                        <tr id="rowCmpLatency">
-                            <td><strong>End-to-End Latency</strong></td>
-                            <td id="tdOokLatency">0.53 ms</td>
-                            <td id="tdBpskLatency">10.63 ms</td>
-                            <td id="tdAdvLatency"><span class="badge-table-tag win">OOK Instantaneous (0.53 ms)</span></td>
-                        </tr>
-                        <tr id="rowCmpOutage">
-                            <td><strong>Outage & Noise Rejection</strong></td>
-                            <td id="tdOokOutage">Susceptible to Shadowing/Glare</td>
-                            <td id="tdBpskOutage">Subcarrier Glare Rejection + 4.5dB Coding Gain</td>
-                            <td id="tdAdvOutage"><span class="badge-table-tag alt">BPSK+FEC Outage Immunity</span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -1949,7 +1987,7 @@
                 <!-- 1. BER vs Distance Graph -->
                 <div class="dynamic-chart-card">
                     <div class="dynamic-chart-header">
-                        <span>📉 <strong>1. BER vs. Distance (OOK vs. BPSK+FEC)</strong></span>
+                        <span id="chart1Title">📉 <strong>1. BER vs. Distance (OOK vs. BPSK+FEC)</strong></span>
                         <span class="badge-op-point mod-ook" id="badgeBerLive">BER: 0.000000</span>
                     </div>
                     <canvas id="canvasBerLive" width="360" height="175" class="live-chart-canvas"></canvas>
@@ -1958,7 +1996,7 @@
                 <!-- 2. Packet Success Rate vs Distance Graph -->
                 <div class="dynamic-chart-card">
                     <div class="dynamic-chart-header">
-                        <span>📈 <strong>2. Packet Success (%) vs. Distance</strong></span>
+                        <span id="chart2Title">📈 <strong>2. Packet Success (%) vs. Distance</strong></span>
                         <span class="badge-op-point mod-ook" id="badgeSnrLive">Success: 100.0%</span>
                     </div>
                     <canvas id="canvasSnrLive" width="360" height="175" class="live-chart-canvas"></canvas>
@@ -1987,27 +2025,27 @@
             <div class="benchmark-graphs-grid" id="benchmarkGraphsGrid" style="display: none;">
                 <div class="graph-figure-wrap">
                     <div class="graph-figure-title">1. Bit Error Rate (BER) vs SNR Comparison</div>
-                    <img src="ber_ook_fec_vs_bpsk_fec.png" alt="BER vs SNR">
+                    <img src="reports/ber_ook_fec_vs_bpsk_fec.png" alt="BER vs SNR">
                 </div>
                 <div class="graph-figure-wrap">
                     <div class="graph-figure-title">2. Packet Error Rate (PER) vs SNR</div>
-                    <img src="poor_channel_per_comparison.png" alt="PER vs SNR">
+                    <img src="reports/poor_channel_per_comparison.png" alt="PER vs SNR">
                 </div>
                 <div class="graph-figure-wrap">
                     <div class="graph-figure-title">3. Effective Throughput vs SNR</div>
-                    <img src="throughput_ook_fec_vs_bpsk_fec.png" alt="Throughput vs SNR">
+                    <img src="reports/throughput_ook_fec_vs_bpsk_fec.png" alt="Throughput vs SNR">
                 </div>
                 <div class="graph-figure-wrap">
                     <div class="graph-figure-title">4. End-to-End Latency vs SNR</div>
-                    <img src="latency_ook_fec_vs_bpsk_fec.png" alt="Latency vs SNR">
+                    <img src="reports/latency_ook_fec_vs_bpsk_fec.png" alt="Latency vs SNR">
                 </div>
                 <div class="graph-figure-wrap">
                     <div class="graph-figure-title">5. FEC Decoding Success Rate vs SNR</div>
-                    <img src="fec_success_ook_fec_vs_bpsk_fec.png" alt="FEC Success Rate">
+                    <img src="reports/fec_success_ook_fec_vs_bpsk_fec.png" alt="FEC Success Rate">
                 </div>
                 <div class="graph-figure-wrap">
                     <div class="graph-figure-title">6. Overall Performance Dashboard</div>
-                    <img src="poor_channel_overall_comparison.png" alt="Overall Dashboard">
+                    <img src="reports/poor_channel_overall_comparison.png" alt="Overall Dashboard">
                 </div>
             </div>
         </section>
@@ -2111,6 +2149,89 @@
             updateSimulationState();
         }
 
+        let transmissionTimeouts = [];
+        let bulletAnimId = null;
+
+        function textToBinary(text) {
+            if (!text) return '';
+            return text.split('').slice(0, 16).map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join(' ');
+        }
+
+        // Stop Active Simulation Transmission
+        function stopSimulation() {
+            // Cancel all scheduled transmission stages
+            transmissionTimeouts.forEach(t => clearTimeout(t));
+            transmissionTimeouts = [];
+
+            // Cancel any active RAF bullet packet animation
+            if (bulletAnimId) {
+                cancelAnimationFrame(bulletAnimId);
+                bulletAnimId = null;
+            }
+
+            isTransmitting = false;
+
+            // Turn off buzzer immediately
+            triggerCarBBuzzer(false);
+
+            // Turn off hardware optical glows
+            const ledGlow = document.getElementById('carALedGlow');
+            const pdGlow = document.getElementById('carBPdGlow');
+            const bullet = document.getElementById('guidedBulletPacket');
+            const carABubble = document.getElementById('carABubble');
+            const carBBubble = document.getElementById('carBBubble');
+            const hudBanner = document.getElementById('txStepFlowBanner');
+            const progressLabel = document.getElementById('pipelineProgressLabel');
+            const pill = document.getElementById('stepFlowPill');
+            const desc = document.getElementById('stepFlowText');
+
+            if (ledGlow) ledGlow.style.transform = '';
+            if (pdGlow) pdGlow.style.transform = '';
+            if (bullet) {
+                bullet.style.opacity = '0';
+                bullet.style.left = '24px';
+            }
+            if (carABubble) carABubble.classList.remove('visible');
+            if (carBBubble) carBBubble.classList.remove('visible');
+
+            // Reset steppers
+            for (let i = 1; i <= 10; i++) {
+                const el = document.getElementById('step' + i);
+                if (el) el.className = 'step-node';
+            }
+
+            if (hudBanner) {
+                hudBanner.style.display = 'flex';
+                hudBanner.style.opacity = '1';
+            }
+            if (pill) pill.innerText = 'SIMULATION HALTED';
+            if (desc) desc.innerText = 'Active VLC transmission stopped by user (STOP).';
+            if (progressLabel) progressLabel.innerText = 'SIMULATION STOPPED';
+
+            setTimeout(() => {
+                if (hudBanner && !isTransmitting) {
+                    hudBanner.style.opacity = '0';
+                    setTimeout(() => { if (!isTransmitting) hudBanner.style.display = 'none'; }, 400);
+                }
+            }, 1800);
+        }
+
+        // Reset Simulation
+        function resetSimulation() {
+            stopSimulation();
+            applyPreset(1);
+            const alertBox = document.getElementById('safetyAlertBox');
+            if (alertBox) alertBox.className = 'safety-alert-box warning';
+            const alertHead = document.getElementById('alertHeaderCategory');
+            if (alertHead) alertHead.innerText = '⚠️ VEHICLE SAFETY ALERT';
+            const alertTitle = document.getElementById('alertEventTitle');
+            if (alertTitle) alertTitle.innerText = 'BRAKE_ALERT';
+            const alertAdvice = document.getElementById('alertAdvice');
+            if (alertAdvice) alertAdvice.innerText = 'Car A transmitting safety telemetry via OOK + FEC. Maintain safe headway.';
+            const progressLabel = document.getElementById('pipelineProgressLabel');
+            if (progressLabel) progressLabel.innerText = 'READY';
+        }
+
         // Apply 4 Easy Presets
         function applyPreset(n) {
             document.querySelectorAll('.preset-card-btn').forEach((btn, idx) => {
@@ -2154,7 +2275,7 @@
             }
             handleEnvChange();
             handleEventSelection();
-            executeTransmission();
+            updateSimulationState(true);
         }
 
         // Toggle Academic Benchmark Figures
@@ -2170,8 +2291,119 @@
             }
         }
 
-        // CORE SIMULATION & DYNAMIC DECISION LOGIC
-        function updateSimulationState() {
+        // CORE SIMULATION & DYNAMIC DECISION LOGIC (CONNECTED TO /api/simulate)
+        let activeSimAbortController = null;
+        let simDebounceTimer = null;
+        let lastSimulationData = null;
+
+        // High-Fidelity Physics Engine (Instant Client & Fallback Engine)
+        function calculateSimulationModel(dist, env, obstacle, obsPos, obsSev, eventVal, customText) {
+            const geom = (Math.cos(0.0) * Math.cos(5.0 * Math.PI / 180.0)) / Math.pow(Math.max(dist, 0.1), 2.0);
+            let basePlDb = -29.0 + 10.0 * Math.log10(Math.max(geom, 1e-6));
+
+            const obsLosses = {
+                none: 0.0,
+                pothole: { low: 4.5, medium: 7.8, high: 11.0 },
+                animal: { low: 10.0, medium: 14.5, high: 18.0 },
+                dead_animal: { low: 11.0, medium: 15.0, high: 19.0 },
+                vehicle: { low: 13.0, medium: 17.5, high: 22.0 },
+                pedestrian: { low: 9.0, medium: 13.5, high: 17.0 },
+                debris: { low: 5.5, medium: 9.0, high: 13.0 }
+            };
+            let obsLossDb = 0.0;
+            if (obsLosses[obstacle]) {
+                const val = obsLosses[obstacle];
+                obsLossDb = (typeof val === 'number') ? val : (val[obsSev] || 7.8);
+            }
+            basePlDb -= obsLossDb;
+            if (env === 'bright_sun') basePlDb -= 3.2;
+            else if (env === 'tunnel') basePlDb += 1.0;
+
+            const pathLossDb = Math.max(-60.0, Math.min(-20.0, basePlDb));
+            const isGood = (pathLossDb >= -35.0 && obstacle === 'none' && dist <= 1.8);
+
+            let channel = isGood ? 'GOOD' : 'POOR';
+            let snr_db, latency_ms, throughput_kbps, ber, packet_success, winner, status_msg;
+            let comparison = {};
+
+            if (isGood) {
+                snr_db = Math.max(12.5, Math.min(16.0, 14.0 + (pathLossDb - (-29.0)) * 0.4));
+                latency_ms = 0.51 + 0.025 * dist;
+                throughput_kbps = 1000.0;
+                ber = 0.0;
+                packet_success = 100.0;
+                winner = 'OOK + FEC';
+                status_msg = 'GOOD CHANNEL — OOK + FEC ACTIVE';
+                comparison = {
+                    'OOK + FEC': { ber: 0.0, snr: Math.round(snr_db * 10) / 10, packet_success: 100.0, latency: Math.round(latency_ms * 100) / 100, throughput: 1000.0 },
+                    'BPSK + FEC': { ber: 0.0, snr: Math.round((snr_db + 3.0) * 10) / 10, packet_success: 100.0, latency: 10.63, throughput: 434.8 }
+                };
+            } else {
+                const snr_db_ook = Math.max(0.5, Math.min(10.5, 8.5 + (pathLossDb - (-42.0)) * 0.45));
+                let ber_ook = 0.0;
+                if (snr_db_ook >= 6.0) ber_ook = 0.0;
+                else if (snr_db_ook >= 3.0) ber_ook = Math.min(0.5, Math.pow(10, -1.7 - (snr_db_ook - 3.0) * 1.72));
+                else ber_ook = Math.min(0.5, Math.pow(10, -0.8 - snr_db_ook * 0.3));
+
+                const pkt_success_ook = Math.round(Math.max(0.0, Math.min(100.0, Math.pow(1.0 - ber_ook, 528) * 100.0)) * 10) / 10;
+                const lat_ook = Math.round((10.15 + 0.22 * dist + (obsLossDb * 0.01)) * 100) / 100;
+                const tput_ook = Math.round(500.0 * (pkt_success_ook / 100.0) * 10) / 10;
+
+                const glare_gain = (env === 'bright_sun') ? 1.5 : 0.0;
+                const snr_db_bpsk = snr_db_ook + 3.0 + glare_gain;
+                let ber_bpsk = 0.0;
+                if (snr_db_bpsk >= 5.5) ber_bpsk = 0.0;
+                else if (snr_db_bpsk >= 4.0) ber_bpsk = Math.min(0.5, Math.pow(10, -1.5 - (snr_db_bpsk - 4.0) * 2.25));
+                else ber_bpsk = Math.min(0.5, Math.pow(10, -1.0 - (snr_db_bpsk - 1.0) * 0.5));
+
+                const pkt_success_bpsk = Math.round(Math.max(0.0, Math.min(100.0, Math.pow(1.0 - ber_bpsk, 528) * 100.0)) * 10) / 10;
+                const lat_bpsk = Math.round((10.65 + 0.22 * dist + (obsLossDb * 0.01)) * 100) / 100;
+                const tput_bpsk = Math.round(434.8 * (pkt_success_bpsk / 100.0) * 10) / 10;
+
+                if (pkt_success_bpsk > pkt_success_ook) winner = 'BPSK + FEC';
+                else if (pkt_success_ook > pkt_success_bpsk) winner = 'OOK + FEC';
+                else if (ber_bpsk < ber_ook) winner = 'BPSK + FEC';
+                else if (ber_ook < ber_bpsk) winner = 'OOK + FEC';
+                else winner = (tput_ook >= tput_bpsk) ? 'OOK + FEC' : 'BPSK + FEC';
+
+                status_msg = 'POOR CHANNEL — COMPARING MODULATIONS';
+                if (winner === 'BPSK + FEC') {
+                    snr_db = snr_db_bpsk; ber = ber_bpsk; packet_success = pkt_success_bpsk; latency_ms = lat_bpsk; throughput_kbps = tput_bpsk;
+                } else {
+                    snr_db = snr_db_ook; ber = ber_ook; packet_success = pkt_success_ook; latency_ms = lat_ook; throughput_kbps = tput_ook;
+                }
+
+                comparison = {
+                    'OOK + FEC': { ber: Math.round(ber_ook * 1e6) / 1e6, snr: Math.round(snr_db_ook * 10) / 10, packet_success: pkt_success_ook, latency: lat_ook, throughput: tput_ook },
+                    'BPSK + FEC': { ber: Math.round(ber_bpsk * 1e6) / 1e6, snr: Math.round(snr_db_bpsk * 10) / 10, packet_success: pkt_success_bpsk, latency: lat_bpsk, throughput: tput_bpsk }
+                };
+            }
+
+            let safety_msg = (eventVal !== 'CUSTOM') ? eventVal : (customText || 'BRAKE_ALERT');
+            if (['pothole', 'animal', 'dead_animal'].includes(obstacle) && ['BRAKE_ALERT', 'EMERGENCY_BRAKING'].includes(eventVal)) {
+                safety_msg = `BRAKE / SAFETY MESSAGE (${obstacle.toUpperCase()})`;
+            }
+
+            return {
+                distance_m: dist,
+                channel_quality: channel,
+                status_message: status_msg,
+                selected_modulation: winner,
+                selected_method_display: `SELECTED METHOD: ${winner}`,
+                fec_status: 'ON (Rate 1/2)',
+                snr_db: Math.round(snr_db * 10) / 10,
+                path_loss_db: Math.round(pathLossDb * 10) / 10,
+                ber: Math.round(ber * 1e6) / 1e6,
+                packet_success_rate: packet_success,
+                latency_ms: Math.round(latency_ms * 100) / 100,
+                throughput_kbps: Math.round(throughput_kbps * 10) / 10,
+                buzzer_active: true,
+                safety_message: safety_msg,
+                comparison: comparison
+            };
+        }
+
+        function updateSimulationState(immediate = false) {
             const dist = parseFloat(document.getElementById('sliderDist').value);
             const env = document.getElementById('selEnvironment').value;
             const obstacle = document.getElementById('selObstacle').value;
@@ -2180,77 +2412,31 @@
             const eventVal = document.getElementById('selSafetyEvent').value;
             const customText = document.getElementById('txtCustomEvent').value;
 
-            document.getElementById('lblDist').innerText = dist.toFixed(2) + " m";
+            const lblDist = document.getElementById('lblDist');
+            if (lblDist) lblDist.innerText = dist.toFixed(2) + " m";
 
-            // Ambient light lux mapping
-            let ambLux = 35.0;
-            if (env === 'bright_sun') ambLux = 2500.0;
-            else if (env === 'twilight') ambLux = 10.0;
-            else if (env === 'tunnel') ambLux = 150.0;
-
-            // Optical Channel Physics (Lambertian Model)
-            const radAng = 0.0;
-            const incAng = 5.0;
-            const cosRad = Math.cos(radAng * Math.PI / 180.0);
-            const cosInc = Math.cos(incAng * Math.PI / 180.0);
-            const geomFactor = (cosRad * cosInc) / Math.pow(Math.max(dist, 0.1), 2.0);
-            let basePlDb = -29.0 + 10.0 * Math.log10(geomFactor);
-
-            // Obstacle Attenuation based on physics profiles
-            let obsLossDb = 0.0;
-            if (obstacle === 'pothole') {
-                obsLossDb = (obsSev === 'low') ? 4.5 : (obsSev === 'medium' ? 7.8 : 11.0);
-            } else if (obstacle === 'animal') {
-                obsLossDb = (obsSev === 'low') ? 10.0 : (obsSev === 'medium' ? 14.5 : 18.0);
-            } else if (obstacle === 'dead_animal') {
-                obsLossDb = (obsSev === 'low') ? 11.0 : (obsSev === 'medium' ? 15.0 : 19.0);
-            } else if (obstacle === 'vehicle') {
-                obsLossDb = (obsSev === 'low') ? 13.0 : (obsSev === 'medium' ? 17.5 : 22.0);
-            } else if (obstacle === 'pedestrian') {
-                obsLossDb = (obsSev === 'low') ? 9.0 : (obsSev === 'medium' ? 13.5 : 17.0);
-            } else if (obstacle === 'debris') {
-                obsLossDb = (obsSev === 'low') ? 5.5 : (obsSev === 'medium' ? 9.0 : 13.0);
-            }
-
-            basePlDb -= obsLossDb;
-            if (env === 'tunnel') basePlDb += 1.0;
-            if (env === 'bright_sun') basePlDb -= 3.2; // High shot noise degradation
-
-            const pathLossDb = Math.max(-60.0, Math.min(-20.0, basePlDb));
-
-            // ML Channel Classification Boundary: PL >= -35.0 dB is GOOD channel (LOS)
-            const isGood = (pathLossDb >= -35.0 && obstacle === 'none' && dist <= 1.8);
-            const probGood = isGood ? Math.min(0.985, 0.85 + (pathLossDb - (-35.0)) * 0.02) : Math.max(0.04, 0.15 - (-35.0 - pathLossDb) * 0.015);
-            const probPoor = 1.0 - probGood;
-
-            // Effective Electrical SNR mapping
-            let effectiveSnrDb;
-            if (isGood) {
-                effectiveSnrDb = Math.max(12.5, Math.min(16.0, 14.0 + (pathLossDb - (-29.0)) * 0.4));
-            } else {
-                effectiveSnrDb = Math.max(1.0, Math.min(10.5, 8.5 + (pathLossDb - (-42.0)) * 0.45));
-            }
-
-            // VISUAL ROAD SCENE GEOMETRY
+            // VISUAL ROAD SCENE GEOMETRY (Immediate 60fps rendering)
             const roadbed = document.getElementById('highwayRoadbed');
-            const roadWidth = roadbed.clientWidth || 600;
-            const carA_X = 24; // Car A is always fixed on the LEFT
+            const roadWidth = roadbed ? (roadbed.clientWidth || 600) : 600;
+            const carA_X = 24; // Car A fixed on LEFT
             const carWidth = 130;
 
-            // Map distance (0.5m to 30.0m) to Car B position
             const minB_X = carA_X + carWidth + 80;
             const maxB_X = Math.max(minB_X + 60, roadWidth - carWidth - 24);
             const normDist = Math.min(1.0, Math.max(0.0, (dist - 0.5) / 29.5));
             const carB_X = minB_X + normDist * (maxB_X - minB_X);
 
             const vehicleB = document.getElementById('vehicleCarB');
-            vehicleB.style.left = carB_X + "px";
+            if (vehicleB) vehicleB.style.left = carB_X + "px";
 
             // Dimension bar above road
             const dimLine = document.getElementById('dimensionLine');
-            dimLine.style.left = (carA_X + carWidth - 10) + "px";
-            dimLine.style.width = Math.max(20, carB_X - (carA_X + carWidth - 10)) + "px";
-            document.getElementById('dimensionLabel').innerText = `<------ ${dist.toFixed(1)} m ------>`;
+            if (dimLine) {
+                dimLine.style.left = (carA_X + carWidth - 10) + "px";
+                dimLine.style.width = Math.max(20, carB_X - (carA_X + carWidth - 10)) + "px";
+            }
+            const dimLbl = document.getElementById('dimensionLabel');
+            if (dimLbl) dimLbl.innerText = `<------ ${dist.toFixed(1)} m ------>`;
 
             // Optical LOS guide track spanning Car A LED (Tx) to Car B Photodiode (Rx)
             const txLedX = carA_X + 118;
@@ -2258,83 +2444,56 @@
             const linkSpan = Math.max(20, rxPdX - txLedX);
 
             const beamTrack = document.getElementById('vlcBeamTrack');
-            beamTrack.style.left = txLedX + "px";
-            beamTrack.style.width = linkSpan + "px";
-
-            const packetTrack = document.getElementById('packetStreamLane');
-            packetTrack.style.left = txLedX + "px";
-            packetTrack.style.width = linkSpan + "px";
-
-            // OBSTACLE POSITION: IF POTHOLE OR ANIMAL, CLEARLY IN FRONT OF CAR A BEFORE TRANSMISSION PATH
-            const obstacleWrap = document.getElementById('roadObstacleWrapper');
-            if (obstacle === 'none') {
-                obstacleWrap.style.display = 'none';
-            } else {
-                obstacleWrap.style.display = 'flex';
-                let obsX;
-                if (obstacle === 'pothole' || obstacle === 'animal' || obstacle === 'dead_animal' || obsPos === 'near_a') {
-                    // Positioned clearly in front of Car A's front bumper on the roadway surface
-                    obsX = (carA_X + carWidth) + 26;
-                } else if (obsPos === 'near_b') {
-                    obsX = carB_X - 35;
-                } else {
-                    // Middle between vehicles
-                    obsX = (carA_X + carWidth) + 0.5 * (carB_X - (carA_X + carWidth));
-                }
-
-                obstacleWrap.style.left = obsX + "px";
-                document.getElementById('obstacleSvgWrap').innerHTML = OBSTACLE_SVGS[obstacle] || OBSTACLE_SVGS.pothole;
-                
-                if (obstacle === 'pothole') {
-                    document.getElementById('obstaclePillBadge').innerText = `🕳️ POTHOLE (DETECTED BY CAR A)`;
-                } else if (obstacle === 'animal') {
-                    document.getElementById('obstaclePillBadge').innerText = `🐕 ANIMAL (DETECTED BY CAR A)`;
-                } else if (obstacle === 'dead_animal') {
-                    document.getElementById('obstaclePillBadge').innerText = `⚠️ ROAD HAZARD (DETECTED BY CAR A)`;
-                } else {
-                    const formattedName = obstacle.replace('_', ' ').toUpperCase();
-                    document.getElementById('obstaclePillBadge').innerText = `${formattedName} (${obsSev.toUpperCase()})`;
-                }
+            if (beamTrack) {
+                beamTrack.style.left = txLedX + "px";
+                beamTrack.style.width = linkSpan + "px";
             }
 
-            // Beam visual state & dynamic digital packet labels
-            const beamCone = document.getElementById('vlcLightBeam');
-            const linkStatusBadge = document.getElementById('linkStatusBadge');
-            const linkStatusText = document.getElementById('linkStatusText');
+            const packetTrack = document.getElementById('packetStreamLane');
+            if (packetTrack) {
+                packetTrack.style.left = txLedX + "px";
+                packetTrack.style.width = linkSpan + "px";
+            }
 
-            // Set emergency short tags on the traveling digital packets
-            let eventTag = 'EMG';
-            if (eventVal === 'EMERGENCY_BRAKING' || eventVal === 'BRAKE_ALERT') eventTag = 'BRAKE';
-            else if (eventVal === 'ROAD_OBSTACLE' || eventVal === 'POTHOLE_AHEAD') eventTag = 'BRAKE';
-            else if (eventVal === 'ANIMAL_ON_ROAD' || eventVal === 'DEAD_ANIMAL' || obstacle === 'animal') eventTag = 'BRAKE';
-            else if (eventVal === 'COLLISION_WARNING' || eventVal === 'ACCIDENT_AHEAD') eventTag = 'ACCIDENT';
-            else if (eventVal === 'WEATHER_HAZARD') eventTag = 'WTHR';
-            else if (eventVal === 'TRAFFIC_SLOWDOWN' || eventVal === 'SLOW_TRAFFIC') eventTag = 'SLOW';
-            else if (eventVal === 'PEDESTRIAN_AHEAD') eventTag = 'PED';
-            else if (eventVal === 'VEHICLE_STOPPED') eventTag = 'STOP';
-            else if (eventVal === 'ROAD_DEBRIS') eventTag = 'DEBRIS';
-            else if (eventVal === 'EMERGENCY_VEHICLE') eventTag = 'EMRG';
-            else if (eventVal === 'CUSTOM') eventTag = 'MSG';
+            // Obstacle Placement & Visual Icon
+            const obstacleWrap = document.getElementById('roadObstacleWrapper');
+            if (obstacleWrap) {
+                if (obstacle === 'none') {
+                    obstacleWrap.style.display = 'none';
+                } else {
+                    obstacleWrap.style.display = 'flex';
+                    let obsX;
+                    if (obstacle === 'pothole' || obstacle === 'animal' || obstacle === 'dead_animal' || obsPos === 'near_a') {
+                        obsX = (carA_X + carWidth) + 26;
+                    } else if (obsPos === 'near_b') {
+                        obsX = carB_X - 35;
+                    } else {
+                        obsX = (carA_X + carWidth) + 0.5 * (carB_X - (carA_X + carWidth));
+                    }
+                    obstacleWrap.style.left = obsX + "px";
+                    const obsSvg = document.getElementById('obstacleSvgWrap');
+                    if (obsSvg) obsSvg.innerHTML = OBSTACLE_SVGS[obstacle] || OBSTACLE_SVGS.pothole;
 
-            const tag1 = document.getElementById('tagPkt1');
-            const tag2 = document.getElementById('tagPkt2');
-            const tag3 = document.getElementById('tagPkt3');
-            const tag4 = document.getElementById('tagPkt4');
-            const tag5 = document.getElementById('tagPkt5');
-
-            // Determine Selected Modulation Scheme based on ML Channel Quality (OOK for Good, BPSK+FEC for Poor)
-            let selectedModScheme = isGood ? 'OOK' : 'BPSK + FEC';
-
-            if (tag1) tag1.innerText = eventTag;
-            if (tag2) tag2.innerText = (selectedModScheme === 'OOK') ? 'OOK' : 'BPSK';
-            if (tag3) tag3.innerText = (selectedModScheme === 'OOK') ? 'CRC16' : 'FEC1/2';
-            if (tag4) tag4.innerText = eventTag;
-            if (tag5) tag5.innerText = 'PASS';
+                    const pill = document.getElementById('obstaclePillBadge');
+                    if (pill) {
+                        if (obstacle === 'pothole') {
+                            pill.innerText = `🕳️ POTHOLE (DETECTED BY CAR A)`;
+                        } else if (obstacle === 'animal') {
+                            pill.innerText = `🐕 ANIMAL (DETECTED BY CAR A)`;
+                        } else if (obstacle === 'dead_animal') {
+                            pill.innerText = `⚠️ ROAD HAZARD (DETECTED BY CAR A)`;
+                        } else {
+                            const formattedName = obstacle.replace('_', ' ').toUpperCase();
+                            pill.innerText = `${formattedName} (${obsSev.toUpperCase()})`;
+                        }
+                    }
+                }
+            }
 
             // Dynamic Scene Atmosphere Theme
             const highwaySceneEl = document.getElementById('highwayScene');
             const carASensorBeam = document.getElementById('carASensorBeam');
-            if (isGood) {
+            if (obstacle === 'none' && dist <= 1.8) {
                 if (highwaySceneEl) highwaySceneEl.className = 'highway-scene scene-daylight';
                 if (carASensorBeam) carASensorBeam.classList.remove('active');
             } else {
@@ -2350,36 +2509,138 @@
                 }
             }
 
-            // Frame Dump & Status Updates
-            let eventText = eventVal.replace(/_/g, ' ');
-            if (eventVal === 'CUSTOM') eventText = customText.trim() || 'CUSTOM SAFETY ALERT';
+            // INSTANT STATE EVALUATION (Guarantees zero-delay simulation update)
+            const inputs = { dist, env, obstacle, obsPos, obsSev, eventVal, customText };
+            const localData = calculateSimulationModel(dist, env, obstacle, obsPos, obsSev, eventVal, customText);
+            lastSimulationData = localData;
+            applySimulationData(localData, inputs);
 
-            let dumpEvt = eventVal;
-            if (obstacle === 'pothole') dumpEvt = 'BRAKE_ALERT (POTHOLE)';
-            else if (obstacle === 'animal' || eventVal === 'ANIMAL_ON_ROAD') dumpEvt = 'BRAKE_ALERT (ANIMAL)';
-
-            document.getElementById('dumpEventName').innerText = dumpEvt;
-            document.getElementById('dumpDistance').innerText = `${dist.toFixed(2)} m`;
-            document.getElementById('metaDist').innerText = `${dist.toFixed(1)} m`;
-
-            // Safety Alert Box Styling & Advice
-            const alertInfo = EVENT_ADVICE[eventVal] || EVENT_ADVICE.CUSTOM;
-            const alertBox = document.getElementById('safetyAlertBox');
-            alertBox.className = `safety-alert-box ${alertInfo.type}`;
-            document.getElementById('alertHeaderCategory').innerText = (alertInfo.type === 'emergency' || obstacle === 'pothole' || obstacle === 'animal') ? '🚨 EMERGENCY BRAKE ALERT' : '⚠️ VEHICLE SAFETY ALERT';
-            
-            if (obstacle === 'pothole') {
-                document.getElementById('alertEventTitle').innerText = 'BRAKE ALERT — POTHOLE DETECTED';
-                document.getElementById('alertAdvice').innerText = 'Car A detected a roadway pothole directly ahead and engaged brakes. Decelerate immediately.';
-            } else if (obstacle === 'animal' || obstacle === 'dead_animal') {
-                document.getElementById('alertEventTitle').innerText = 'BRAKE ALERT — ANIMAL DETECTED';
-                document.getElementById('alertAdvice').innerText = 'Car A detected an animal directly in front of it and engaged brakes. Decelerate immediately.';
-            } else {
-                document.getElementById('alertEventTitle').innerText = (eventVal === 'CUSTOM') ? eventText : alertInfo.title;
-                document.getElementById('alertAdvice').innerText = alertInfo.advice;
+            // Debounced API Trigger to sync with FastAPI backend
+            if (simDebounceTimer) {
+                clearTimeout(simDebounceTimer);
+                simDebounceTimer = null;
             }
-            document.getElementById('alertTimestamp').innerText = new Date().toLocaleTimeString();
 
+            if (immediate) {
+                fetchSimulationApi();
+            } else {
+                simDebounceTimer = setTimeout(() => {
+                    fetchSimulationApi();
+                }, 50);
+            }
+        }
+
+        async function fetchSimulationApi() {
+            if (activeSimAbortController) {
+                activeSimAbortController.abort();
+            }
+            activeSimAbortController = new AbortController();
+            const signal = activeSimAbortController.signal;
+
+            const dist = parseFloat(document.getElementById('sliderDist').value);
+            const env = document.getElementById('selEnvironment').value;
+            const obstacle = document.getElementById('selObstacle').value;
+            const obsPos = document.getElementById('selObsPosition').value;
+            const obsSev = document.getElementById('selObsSeverity').value;
+            const eventVal = document.getElementById('selSafetyEvent').value;
+            const customText = document.getElementById('txtCustomEvent').value;
+
+            try {
+                const response = await fetch('/api/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        distance: dist,
+                        environment: env,
+                        obstacle: obstacle,
+                        obstacle_severity: obsSev,
+                        obstacle_position: obsPos,
+                        safety_event: eventVal,
+                        custom_text: customText
+                    }),
+                    signal: signal
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Simulation API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                lastSimulationData = data;
+                applySimulationData(data, { dist, env, obstacle, obsPos, obsSev, eventVal, customText });
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    return; // Request was superseded cleanly
+                }
+                // Fallback is already actively running via calculateSimulationModel()
+            }
+        }
+
+        function applySimulationData(data, inputs) {
+            const dist = data.distance_m;
+            const isGood = (data.channel_quality === 'GOOD');
+            const winner = data.selected_modulation;
+            const comp = data.comparison || {};
+            const ookComp = comp['OOK + FEC'] || {
+                ber: data.ber,
+                snr: data.snr_db,
+                packet_success: data.packet_success_rate,
+                latency: data.latency_ms,
+                throughput: data.throughput_kbps
+            };
+            const bpskComp = comp['BPSK + FEC'] || (isGood ? {
+                ber: 0.0,
+                snr: data.snr_db + 3.0,
+                packet_success: 100.0,
+                latency: 10.63,
+                throughput: 434.8
+            } : {
+                ber: 0.0,
+                snr: data.snr_db,
+                packet_success: 100.0,
+                latency: 10.65,
+                throughput: 434.8
+            });
+
+            // 1. AUTOMATIC MODULATION SELECTION BANNER
+            const bannerPhase = document.getElementById('bannerStatusPhase');
+            const bannerWinner = document.getElementById('bannerSelectedMethod');
+            if (bannerPhase) bannerPhase.innerText = data.status_message;
+            if (bannerWinner) bannerWinner.innerText = data.selected_method_display;
+
+            // 2. HIGHWAY STATUS BADGE & BEAM STYLING
+            const beamCone = document.getElementById('vlcLightBeam');
+            const packetTrack = document.getElementById('packetStreamLane');
+            const linkStatusBadge = document.getElementById('linkStatusBadge');
+            const linkStatusText = document.getElementById('linkStatusText');
+            if (isGood) {
+                if (beamCone) beamCone.className = 'vlc-light-beam';
+                if (packetTrack) packetTrack.className = 'packet-stream-lane chan-good';
+                if (linkStatusBadge) linkStatusBadge.className = 'highway-status-badge status-optimal';
+                if (linkStatusText) linkStatusText.innerText = 'DIGITAL VLC LINK ACTIVE • GOOD CHANNEL (LOS • 1.0 Mbps)';
+            } else {
+                if (beamCone) beamCone.className = 'vlc-light-beam poor' + (inputs.obstacle !== 'none' ? ' obstructed' : '');
+                if (packetTrack) packetTrack.className = 'packet-stream-lane chan-severe';
+                if (linkStatusBadge) linkStatusBadge.className = 'highway-status-badge status-severe';
+                if (linkStatusText) linkStatusText.innerText = `POOR CHANNEL — COMPARING MODULATIONS • SELECTED: ${winner}`;
+            }
+
+            // 3. DIGITAL PACKET LABELS
+            let eventTag = 'BRAKE';
+            if (inputs.eventVal === 'ACCIDENT_AHEAD' || inputs.eventVal === 'COLLISION_WARNING') eventTag = 'ACCIDENT';
+            else if (inputs.eventVal === 'SLOW_TRAFFIC') eventTag = 'SLOW';
+            const tag1 = document.getElementById('tagPkt1');
+            const tag2 = document.getElementById('tagPkt2');
+            const tag3 = document.getElementById('tagPkt3');
+            const tag4 = document.getElementById('tagPkt4');
+            const tag5 = document.getElementById('tagPkt5');
+            if (tag1) tag1.innerText = eventTag;
+            if (tag2) tag2.innerText = winner.includes('BPSK') ? 'BPSK' : 'OOK';
+            if (tag3) tag3.innerText = 'FEC1/2';
+            if (tag4) tag4.innerText = eventTag;
+            if (tag5) tag5.innerText = 'PASS';
+
+            // 4. METRIC CARDS
             const valChan = document.getElementById('valChannelQuality');
             const valMod = document.getElementById('valAdaptiveMod');
             const valFec = document.getElementById('valFecActive');
@@ -2388,229 +2649,167 @@
             const valTput = document.getElementById('valThroughput');
             const valBer = document.getElementById('valBer');
             const valSucc = document.getElementById('valSuccessRate');
-            const rationaleBox = document.getElementById('boxRationale');
 
+            if (valChan) {
+                valChan.innerText = data.channel_quality;
+                valChan.className = 'metric-value-large ' + (isGood ? 'green' : 'red');
+            }
+            if (valMod) {
+                valMod.innerText = winner;
+                valMod.className = 'metric-value-large ' + (winner.includes('BPSK') ? 'red' : 'blue');
+            }
+            if (valFec) {
+                valFec.innerText = data.fec_status;
+                valFec.className = 'metric-value-large green';
+            }
+            if (valConf) valConf.innerText = isGood ? '98.5%' : '96.2%';
+            if (valLat) valLat.innerText = data.latency_ms.toFixed(2) + ' ms';
+            if (valTput) valTput.innerText = data.throughput_kbps.toFixed(1) + ' kbps';
+            if (valBer) valBer.innerText = data.ber.toFixed(6);
+            if (valSucc) valSucc.innerText = data.packet_success_rate.toFixed(1) + '%';
+
+            // 5. DUMP SUMMARY
             const dumpChan = document.getElementById('dumpChannelState');
             const dumpMod = document.getElementById('dumpModScheme');
             const dumpFec = document.getElementById('dumpFecStatus');
+            const dumpDist = document.getElementById('dumpDistance');
+            const dumpEvt = document.getElementById('dumpEventName');
+            const metaDist = document.getElementById('metaDist');
 
-            // Calculate exact distance-dependent Latency, Throughput, BER
-            let curLatency = 0.53;
-            let curThroughput = 1000.0;
-            let curRawBer = 0.0;
-            let curPostBer = 0.0;
+            if (dumpChan) {
+                dumpChan.innerText = `${data.channel_quality} (PL: ${data.path_loss_db.toFixed(1)} dB)`;
+                dumpChan.className = 'dump-value ' + (isGood ? 'highlight-green' : 'highlight-red');
+            }
+            if (dumpMod) dumpMod.innerText = `${winner} (API calculated)`;
+            if (dumpFec) dumpFec.innerText = data.fec_status;
+            if (dumpDist) dumpDist.innerText = `${dist.toFixed(2)} m`;
+            if (metaDist) metaDist.innerText = `${dist.toFixed(1)} m`;
+            if (dumpEvt) dumpEvt.innerText = data.safety_message;
+            const binaryPayloadStr = data.binary_payload || textToBinary(data.safety_message);
+            const dumpBinary = document.getElementById('dumpBinaryBits');
+            if (dumpBinary) dumpBinary.innerText = binaryPayloadStr;
 
-            const linSnr = Math.pow(10, effectiveSnrDb / 10.0);
-            const ookArg = Math.sqrt(linSnr / 4.0);
-            curRawBer = 0.5 * Math.exp(-ookArg * ookArg / 2.0) / (Math.sqrt(2.0 * Math.PI) * Math.max(ookArg, 0.01));
-
-            if (isGood) {
-                // SCENARIO 1: GOOD CHANNEL -> OOK + FEC (1000 kbps, 0.53 ms)
-                curLatency = 0.51 + 0.025 * dist;
-                curThroughput = 1000.0;
-                curPostBer = (effectiveSnrDb >= 12.0) ? 0.0 : Math.min(0.1, curRawBer);
-
-                beamCone.className = 'vlc-light-beam';
-                packetTrack.className = 'packet-stream-lane chan-good';
-                linkStatusBadge.className = 'highway-status-badge status-optimal';
-                linkStatusText.innerText = 'DIGITAL VLC LINK ACTIVE • GOOD CHANNEL (LOS • 1.0 Mbps)';
-
-                valChan.innerText = 'GOOD';
-                valChan.className = 'metric-value-large green';
-                valMod.innerText = 'OOK';
-                valMod.className = 'metric-value-large blue';
-                valFec.innerText = 'ON (Rate 1/2)';
-                valFec.className = 'metric-value-large green';
-                valConf.innerText = (probGood * 100).toFixed(1) + "%";
-                valLat.innerText = curLatency.toFixed(2) + ' ms';
-                valTput.innerText = curThroughput.toFixed(1) + ' kbps';
-                valBer.innerText = curPostBer.toFixed(6);
-                valSucc.innerText = '100.0%';
-
-                dumpChan.innerText = `GOOD (PL: ${pathLossDb.toFixed(1)} dB)`;
-                dumpChan.className = 'dump-value highlight-green';
-                dumpMod.innerText = 'OOK + FEC (Direct 1.0 Mbps Line Rate)';
-                dumpFec.innerText = 'ON (Rate 1/2 Convolutional)';
-
-                rationaleBox.innerHTML = `Clear Line-of-Sight on highway (PL = ${pathLossDb.toFixed(1)} dB &ge; -35.0 dB, SNR = ${effectiveSnrDb.toFixed(1)} dB). <strong>OOK with Rate 1/2 FEC</strong> is selected by ML model to achieve maximum line rate at <strong>1000.0 kbps (1.0 Mbps)</strong> with near-instantaneous <strong>${curLatency.toFixed(2)} ms</strong> latency and guaranteed error correction.`;
-
-                // Update Simulation Results Section
-                const resSnr = document.getElementById('resSnrVal');
-                const resPl = document.getElementById('resPathLossVal');
-                const resBer = document.getElementById('resBerVal');
-                const resRawBer = document.getElementById('resRawBerVal');
-                const resSucc = document.getElementById('resSuccessVal');
-                const resPer = document.getElementById('resPerVal');
-                const resLat = document.getElementById('resLatencyVal');
-                const resTp = document.getElementById('resThroughputVal');
-                const resMod = document.getElementById('resModVal');
-                const resModD = document.getElementById('resModDesc');
-                const resFec = document.getElementById('resFecVal');
-                const resFecD = document.getElementById('resFecDesc');
-                const resChan = document.getElementById('resChannelVal');
-                const resConf = document.getElementById('resConfidenceVal');
-
-                if (resSnr) resSnr.innerText = effectiveSnrDb.toFixed(1) + ' dB';
-                if (resPl) resPl.innerText = 'Path Loss: ' + pathLossDb.toFixed(1) + ' dB';
-                if (resBer) resBer.innerText = curPostBer.toFixed(6);
-                if (resRawBer) resRawBer.innerText = 'Post-FEC Decoded';
-                if (resSucc) resSucc.innerText = '100.0%';
-                if (resPer) resPer.innerText = 'PER: 0.0000 (0 / 40 Lost)';
-                if (resLat) resLat.innerText = curLatency.toFixed(2) + ' ms';
-                if (resTp) resTp.innerText = curThroughput.toFixed(1) + ' kbps';
-                if (resMod) resMod.innerText = 'OOK';
-                if (resModD) resModD.innerText = 'Direct Fast IM/DD';
-                if (resFec) resFec.innerText = 'ON (Rate 1/2)';
-                if (resFecD) resFecD.innerText = 'Convolutional Codec Active';
-                if (resChan) resChan.innerText = 'GOOD';
-                if (resConf) resConf.innerText = 'Confidence: ' + (probGood * 100).toFixed(1) + '%';
-
-                // Update Comparative Table for Good Channel
-                const tdOokBer = document.getElementById('tdOokBer');
-                const tdBpskBer = document.getElementById('tdBpskBer');
-                const tdAdvBer = document.getElementById('tdAdvBer');
-                const tdOokSuccess = document.getElementById('tdOokSuccess');
-                const tdBpskSuccess = document.getElementById('tdBpskSuccess');
-                const tdAdvSuccess = document.getElementById('tdAdvSuccess');
-                const tdOokTput = document.getElementById('tdOokTput');
-                const tdBpskTput = document.getElementById('tdBpskTput');
-                const tdAdvTput = document.getElementById('tdAdvTput');
-                const tdOokLatency = document.getElementById('tdOokLatency');
-                const tdBpskLatency = document.getElementById('tdBpskLatency');
-                const tdAdvLatency = document.getElementById('tdAdvLatency');
-                const tdOokOutage = document.getElementById('tdOokOutage');
-                const tdBpskOutage = document.getElementById('tdBpskOutage');
-                const tdAdvOutage = document.getElementById('tdAdvOutage');
-
-                if (tdOokBer) tdOokBer.innerText = '0.000000';
-                if (tdBpskBer) tdBpskBer.innerText = '0.000000';
-                if (tdAdvBer) tdAdvBer.innerHTML = '<span class="badge-table-tag win">OOK + FEC Optimal in Good LOS</span>';
-                if (tdOokSuccess) tdOokSuccess.innerText = '100.0% (PER 0.000)';
-                if (tdBpskSuccess) tdBpskSuccess.innerText = '100.0% (PER 0.000)';
-                if (tdAdvSuccess) tdAdvSuccess.innerHTML = '<span class="badge-table-tag win">100% Reliable Delivery</span>';
-                if (tdOokTput) tdOokTput.innerText = '1000.0 kbps';
-                if (tdBpskTput) tdBpskTput.innerText = '434.8 kbps';
-                if (tdAdvTput) tdAdvTput.innerHTML = '<span class="badge-table-tag win">OOK +130% Higher Throughput</span>';
-                if (tdOokLatency) tdOokLatency.innerText = curLatency.toFixed(2) + ' ms';
-                if (tdBpskLatency) tdBpskLatency.innerText = '10.63 ms';
-                if (tdAdvLatency) tdAdvLatency.innerHTML = `<span class="badge-table-tag win">OOK Instantaneous (${curLatency.toFixed(2)} ms)</span>`;
-                if (tdOokOutage) tdOokOutage.innerText = 'Full LOS Reception';
-                if (tdBpskOutage) tdBpskOutage.innerText = 'Subcarrier Glare Rejection + 4.5dB Gain';
-                if (tdAdvOutage) tdAdvOutage.innerHTML = '<span class="badge-table-tag win">OOK Maximum Efficiency</span>';
-            } else {
-                // POOR CHANNELS (POTHOLE / ANIMAL / SEVERE BLOCKAGE / HIGH DISTANCE) -> BPSK + FEC
-                curLatency = 10.15 + 0.22 * dist + (obsLossDb * 0.01);
-                curThroughput = 434.8;
-                curPostBer = (effectiveSnrDb >= 2.5) ? 0.0 : Math.pow(10, -1.5 - (effectiveSnrDb - 1.0) * 2.25);
-
-                valChan.innerText = 'POOR';
-                valChan.className = 'metric-value-large red';
-                valConf.innerText = (probPoor * 100).toFixed(1) + "%";
-
-                beamCone.className = 'vlc-light-beam poor' + (obstacle !== 'none' ? ' obstructed' : '');
-                packetTrack.className = 'packet-stream-lane chan-severe';
-                linkStatusBadge.className = 'highway-status-badge status-severe';
-                
-                if (obstacle === 'pothole') {
-                    linkStatusText.innerText = 'DIGITAL VLC LINK ACTIVE • POTHOLE DETECTED (BRAKE ALERT • BPSK+FEC • 434.8 kbps)';
-                } else if (obstacle === 'animal' || obstacle === 'dead_animal') {
-                    linkStatusText.innerText = 'DIGITAL VLC LINK ACTIVE • ANIMAL DETECTED (BRAKE ALERT • BPSK+FEC • ZERO OUTAGE)';
+            // 6. RATIONALE BOX
+            const rationaleBox = document.getElementById('boxRationale');
+            if (rationaleBox) {
+                if (isGood) {
+                    rationaleBox.innerHTML = `Clear Line-of-Sight on highway (PL = ${data.path_loss_db.toFixed(1)} dB &ge; -35.0 dB, SNR = ${data.snr_db.toFixed(1)} dB). <strong>OOK with Rate 1/2 FEC</strong> is selected to achieve maximum line rate at <strong>1000.0 kbps (1.0 Mbps)</strong> with near-instantaneous <strong>${data.latency_ms.toFixed(2)} ms</strong> latency and guaranteed error correction.`;
                 } else {
-                    linkStatusText.innerText = 'DIGITAL VLC LINK ACTIVE • SEVERE POOR CHANNEL (BPSK+FEC • OUTAGE IMMUNITY)';
+                    rationaleBox.innerHTML = `<strong>POOR CHANNEL — COMPARING MODULATIONS:</strong> Simulated OOK+FEC (BER: ${ookComp.ber.toFixed(6)}, Succ: ${ookComp.packet_success.toFixed(1)}%) vs BPSK+FEC (BER: ${bpskComp.ber.toFixed(6)}, Succ: ${bpskComp.packet_success.toFixed(1)}%). <strong>${data.selected_method_display}</strong> based on actual calculated performance.`;
                 }
-
-                valMod.innerText = 'BPSK + FEC';
-                valMod.className = 'metric-value-large red';
-                valFec.innerText = 'ON (Rate 1/2)';
-                valFec.className = 'metric-value-large green';
-                valLat.innerText = curLatency.toFixed(2) + ' ms';
-                valTput.innerText = curThroughput.toFixed(1) + ' kbps';
-                valBer.innerText = curPostBer.toFixed(6);
-                valSucc.innerText = '100.0%';
-
-                dumpChan.innerText = `POOR (PL: ${pathLossDb.toFixed(1)} dB)`;
-                dumpChan.className = 'dump-value highlight-red';
-                dumpMod.innerText = 'BPSK + FEC (Subcarrier IM + Soft Viterbi)';
-                dumpFec.innerText = 'ON (Rate 1/2 Active)';
-
-                let reasonDetails = '';
-                if (obstacle === 'pothole') {
-                    reasonDetails = `Car A detected a roadway pothole directly in front of it and engaged brakes, immediately transmitting a <strong>BRAKE ALERT</strong> via its LED headlight. At d = ${dist.toFixed(1)}m under road attenuation (PL = ${pathLossDb.toFixed(1)} dB, SNR = ${effectiveSnrDb.toFixed(1)} dB), <strong>BPSK + FEC</strong> is selected to eliminate packet loss and maintain <strong>100.0% error-free delivery</strong> in ${curLatency.toFixed(2)} ms.`;
-                } else if (obstacle === 'animal' || obstacle === 'dead_animal') {
-                    reasonDetails = `Car A detected an animal directly in front of it and engaged emergency brakes, immediately transmitting a <strong>BRAKE ALERT</strong> via its LED headlight. At d = ${dist.toFixed(1)}m under severe shadow fading (PL = ${pathLossDb.toFixed(1)} dB, SNR = ${effectiveSnrDb.toFixed(1)} dB), <strong>BPSK + FEC</strong> is selected to guarantee <strong>100.0% packet delivery</strong>, eliminate link outage, and maintain ${curLatency.toFixed(2)} ms latency.`;
-                } else {
-                    reasonDetails = `Severe channel degradation / vehicle blockage & high ambient sunlight glare (SNR = ${effectiveSnrDb.toFixed(1)} dB, PL = ${pathLossDb.toFixed(1)} dB). Uncoded OOK suffers high packet loss. <strong>BPSK + FEC</strong> is selected to guarantee <strong>100.0% error-free delivery</strong> with subcarrier DC-glare rejection and ${curLatency.toFixed(2)} ms latency.`;
-                }
-
-                rationaleBox.innerHTML = reasonDetails;
-
-                // Update Simulation Results Section
-                const resSnr = document.getElementById('resSnrVal');
-                const resPl = document.getElementById('resPathLossVal');
-                const resBer = document.getElementById('resBerVal');
-                const resRawBer = document.getElementById('resRawBerVal');
-                const resSucc = document.getElementById('resSuccessVal');
-                const resPer = document.getElementById('resPerVal');
-                const resLat = document.getElementById('resLatencyVal');
-                const resTp = document.getElementById('resThroughputVal');
-                const resMod = document.getElementById('resModVal');
-                const resModD = document.getElementById('resModDesc');
-                const resFec = document.getElementById('resFecVal');
-                const resFecD = document.getElementById('resFecDesc');
-                const resChan = document.getElementById('resChannelVal');
-                const resConf = document.getElementById('resConfidenceVal');
-
-                if (resSnr) resSnr.innerText = effectiveSnrDb.toFixed(1) + ' dB';
-                if (resPl) resPl.innerText = 'Path Loss: ' + pathLossDb.toFixed(1) + ' dB';
-                if (resBer) resBer.innerText = curPostBer.toFixed(6);
-                if (resRawBer) resRawBer.innerText = 'Soft Viterbi Decoded';
-                if (resSucc) resSucc.innerText = '100.0%';
-                if (resPer) resPer.innerText = 'PER: 0.0000 (0 / 40 Lost)';
-                if (resLat) resLat.innerText = curLatency.toFixed(2) + ' ms';
-                if (resTp) resTp.innerText = curThroughput.toFixed(1) + ' kbps';
-                if (resMod) resMod.innerText = 'BPSK + FEC';
-                if (resModD) resModD.innerText = 'Subcarrier Phase Mod';
-                if (resFec) resFec.innerText = 'ON (Rate 1/2)';
-                if (resFecD) resFecD.innerText = 'Convolutional Codec Active';
-                if (resChan) resChan.innerText = 'POOR';
-                if (resConf) resConf.innerText = 'Confidence: ' + (probPoor * 100).toFixed(1) + '%';
-
-                // Update Comparative Table for Poor Channel (Showing BPSK+FEC Superiority)
-                const tdOokBer = document.getElementById('tdOokBer');
-                const tdBpskBer = document.getElementById('tdBpskBer');
-                const tdAdvBer = document.getElementById('tdAdvBer');
-                const tdOokSuccess = document.getElementById('tdOokSuccess');
-                const tdBpskSuccess = document.getElementById('tdBpskSuccess');
-                const tdAdvSuccess = document.getElementById('tdAdvSuccess');
-                const tdOokTput = document.getElementById('tdOokTput');
-                const tdBpskTput = document.getElementById('tdBpskTput');
-                const tdAdvTput = document.getElementById('tdAdvTput');
-                const tdOokLatency = document.getElementById('tdOokLatency');
-                const tdBpskLatency = document.getElementById('tdBpskLatency');
-                const tdAdvLatency = document.getElementById('tdAdvLatency');
-                const tdOokOutage = document.getElementById('tdOokOutage');
-                const tdBpskOutage = document.getElementById('tdBpskOutage');
-                const tdAdvOutage = document.getElementById('tdAdvOutage');
-
-                if (tdOokBer) tdOokBer.innerText = '> 0.052000 (High Outage)';
-                if (tdBpskBer) tdBpskBer.innerText = '0.000000 (Zero Errors)';
-                if (tdAdvBer) tdAdvBer.innerHTML = '<span class="badge-table-tag win">BPSK + FEC Eliminates All Bit Errors</span>';
-                if (tdOokSuccess) tdOokSuccess.innerText = '< 55.0% (Packet Drops)';
-                if (tdBpskSuccess) tdBpskSuccess.innerText = '100.0% (PER 0.000)';
-                if (tdAdvSuccess) tdAdvSuccess.innerHTML = '<span class="badge-table-tag win">BPSK + FEC Guarantees 100% Delivery</span>';
-                if (tdOokTput) tdOokTput.innerText = 'Degraded (Dropped Packets)';
-                if (tdBpskTput) tdBpskTput.innerText = '434.8 kbps (Sustained)';
-                if (tdAdvTput) tdAdvTput.innerHTML = '<span class="badge-table-tag win">BPSK + FEC Stable Throughput</span>';
-                if (tdOokLatency) tdOokLatency.innerText = 'Timeout / Retransmit (> 50ms)';
-                if (tdBpskLatency) tdBpskLatency.innerText = curLatency.toFixed(2) + ' ms';
-                if (tdAdvLatency) tdAdvLatency.innerHTML = `<span class="badge-table-tag win">BPSK + FEC Within Target (${curLatency.toFixed(2)} ms < 20ms)</span>`;
-                if (tdOokOutage) tdOokOutage.innerText = 'High Link Outage & Glare Failure';
-                if (tdBpskOutage) tdBpskOutage.innerText = 'Subcarrier Glare Rejection + 4.5dB Gain';
-                if (tdAdvOutage) tdAdvOutage.innerHTML = '<span class="badge-table-tag win">BPSK + FEC Zero Outage Guarantee</span>';
             }
 
-            // DYNAMICALLY DRAW AND UPDATE REAL-TIME LIVE 4 CHARTS
-            drawLiveCharts(effectiveSnrDb, pathLossDb, valMod.innerText, isGood, obstacle, dist, curLatency, curThroughput, curPostBer, obsLossDb);
+            // 7. SIMULATION RESULTS SECTION
+            const resSnr = document.getElementById('resSnrVal');
+            const resPl = document.getElementById('resPathLossVal');
+            const resBer = document.getElementById('resBerVal');
+            const resRawBer = document.getElementById('resRawBerVal');
+            const resSucc = document.getElementById('resSuccessVal');
+            const resPer = document.getElementById('resPerVal');
+            const resLat = document.getElementById('resLatencyVal');
+            const resTp = document.getElementById('resThroughputVal');
+            const resMod = document.getElementById('resModVal');
+            const resModD = document.getElementById('resModDesc');
+            const resFec = document.getElementById('resFecVal');
+            const resFecD = document.getElementById('resFecDesc');
+            const resChan = document.getElementById('resChannelVal');
+            const resConf = document.getElementById('resConfidenceVal');
+
+            if (resSnr) resSnr.innerText = data.snr_db.toFixed(1) + ' dB';
+            if (resPl) resPl.innerText = 'Path Loss: ' + data.path_loss_db.toFixed(1) + ' dB';
+            if (resBer) resBer.innerText = data.ber.toFixed(6);
+            if (resRawBer) resRawBer.innerText = isGood ? 'Post-FEC Decoded' : 'Soft Viterbi Decoded';
+            if (resSucc) resSucc.innerText = data.packet_success_rate.toFixed(1) + '%';
+            if (resPer) resPer.innerText = `PER: ${(1.0 - data.packet_success_rate / 100.0).toFixed(4)}`;
+            if (resLat) resLat.innerText = data.latency_ms.toFixed(2) + ' ms';
+            if (resTp) resTp.innerText = data.throughput_kbps.toFixed(1) + ' kbps';
+            if (resMod) resMod.innerText = winner;
+            if (resModD) resModD.innerText = winner.includes('BPSK') ? 'Subcarrier Phase Mod' : 'Direct Fast IM/DD';
+            if (resFec) resFec.innerText = data.fec_status;
+            if (resFecD) resFecD.innerText = 'Convolutional Codec Active';
+            if (resChan) resChan.innerText = data.channel_quality;
+            if (resConf) resConf.innerText = isGood ? 'Confidence: 98.5%' : 'Confidence: 96.2%';
+
+            // 8. COMPACT COMPARISON TABLE (ALL 5 METRICS FOR BOTH METHODS)
+            const tdOokBer = document.getElementById('tdOokBer');
+            const tdBpskBer = document.getElementById('tdBpskBer');
+            const tdOokSnr = document.getElementById('tdOokSnr');
+            const tdBpskSnr = document.getElementById('tdBpskSnr');
+            const tdAdvBer = document.getElementById('tdAdvBer');
+            const tdOokSuccess = document.getElementById('tdOokSuccess');
+            const tdBpskSuccess = document.getElementById('tdBpskSuccess');
+            const tdAdvSuccess = document.getElementById('tdAdvSuccess');
+            const tdOokTput = document.getElementById('tdOokTput');
+            const tdBpskTput = document.getElementById('tdBpskTput');
+            const tdAdvTput = document.getElementById('tdAdvTput');
+            const tdOokLatency = document.getElementById('tdOokLatency');
+            const tdBpskLatency = document.getElementById('tdBpskLatency');
+            const tdAdvLatency = document.getElementById('tdAdvLatency');
+
+            if (tdOokBer) tdOokBer.innerText = ookComp.ber.toFixed(6);
+            if (tdBpskBer) tdBpskBer.innerText = bpskComp.ber.toFixed(6);
+            if (tdOokSnr) tdOokSnr.innerText = ookComp.snr.toFixed(1) + ' dB';
+            if (tdBpskSnr) tdBpskSnr.innerText = bpskComp.snr.toFixed(1) + ' dB';
+            if (tdAdvBer) tdAdvBer.innerHTML = `<span class="badge-table-tag ${bpskComp.ber <= ookComp.ber ? 'win' : 'alt'}">${bpskComp.ber <= ookComp.ber ? 'BPSK Lower BER' : 'OOK Lower BER'}</span>`;
+
+            if (tdOokSuccess) tdOokSuccess.innerText = ookComp.packet_success.toFixed(1) + '%';
+            if (tdBpskSuccess) tdBpskSuccess.innerText = bpskComp.packet_success.toFixed(1) + '%';
+            if (tdAdvSuccess) tdAdvSuccess.innerHTML = `<span class="badge-table-tag ${bpskComp.packet_success >= ookComp.packet_success ? 'win' : 'alt'}">${bpskComp.packet_success >= ookComp.packet_success ? 'BPSK Superior Delivery' : 'OOK Superior Delivery'}</span>`;
+
+            if (tdOokTput) tdOokTput.innerText = ookComp.throughput.toFixed(1) + ' kbps';
+            if (tdBpskTput) tdBpskTput.innerText = bpskComp.throughput.toFixed(1) + ' kbps';
+            if (tdAdvTput) tdAdvTput.innerHTML = `<span class="badge-table-tag ${ookComp.throughput >= bpskComp.throughput ? 'win' : 'alt'}">${ookComp.throughput >= bpskComp.throughput ? 'OOK Higher Tput' : 'BPSK Sustained Tput'}</span>`;
+
+            if (tdOokLatency) tdOokLatency.innerText = ookComp.latency.toFixed(2) + ' ms';
+            if (tdBpskLatency) tdBpskLatency.innerText = bpskComp.latency.toFixed(2) + ' ms';
+            if (tdAdvLatency) tdAdvLatency.innerHTML = `<span class="badge-table-tag win">${winner} Selected</span>`;
+
+            // 9. STANDBY CAR B METADATA DISPLAY
+            if (!isTransmitting) {
+                const carBMsg = document.getElementById('carBRecvMsg');
+                const carBMod = document.getElementById('carBRecvMod');
+                const carBChan = document.getElementById('carBRecvChan');
+                const carBDist = document.getElementById('carBRecvDist');
+                const carBBer = document.getElementById('carBRecvBer');
+                const carBSucc = document.getElementById('carBRecvSuccess');
+                if (carBMsg) carBMsg.innerText = data.safety_message;
+                if (carBMod) carBMod.innerText = winner;
+                if (carBChan) carBChan.innerText = data.channel_quality;
+                if (carBDist) carBDist.innerText = dist.toFixed(2) + ' m';
+                if (carBBer) carBBer.innerText = data.ber.toFixed(6);
+                if (carBSucc) carBSucc.innerText = data.packet_success_rate.toFixed(1) + '%';
+                const carBBin = document.getElementById('carBRecvBinary');
+                if (carBBin) carBBin.innerText = binaryPayloadStr;
+
+                const alertBox = document.getElementById('safetyAlertBox');
+                if (alertBox) alertBox.className = `safety-alert-box ${isGood ? 'warning' : 'emergency'}`;
+                const alertHead = document.getElementById('alertHeaderCategory');
+                if (alertHead) alertHead.innerText = isGood ? '⚠️ VEHICLE SAFETY ALERT' : '🚨 EMERGENCY BRAKE ALERT';
+                const alertTitle = document.getElementById('alertEventTitle');
+                if (alertTitle) alertTitle.innerText = data.safety_message;
+                const alertAdvice = document.getElementById('alertAdvice');
+                if (alertAdvice) {
+                    alertAdvice.innerText = isGood 
+                        ? `Car A transmitting safety telemetry via ${winner}. Maintain safe headway.` 
+                        : `Car A detected hazard ahead and engaged emergency brakes. Decelerate immediately.`;
+                }
+            }
+
+            // 10. REAL-TIME CHARTS WITH DUAL COMPARISON DATA
+            const comparisonData = {
+                ookBer: ookComp.ber,
+                bpskBer: bpskComp.ber,
+                ookSnr: ookComp.snr,
+                bpskSnr: bpskComp.snr,
+                ookSuccess: ookComp.packet_success,
+                bpskSuccess: bpskComp.packet_success,
+                ookLatency: ookComp.latency,
+                bpskLatency: bpskComp.latency,
+                ookThroughput: ookComp.throughput,
+                bpskThroughput: bpskComp.throughput,
+                winner: winner
+            };
+            drawLiveCharts(data.snr_db, data.path_loss_db, winner, isGood, inputs.obstacle, dist, data.latency_ms, data.throughput_kbps, data.ber, 0.0, comparisonData);
         }
 
         // WEB AUDIO API BUZZER / SOUND SYNTHESIZER
@@ -2712,20 +2911,116 @@
         }
 
         // DYNAMIC REAL-TIME CANVAS CHART RENDERING CONTROLLER (4 COMPACT CHARTS)
-        function drawLiveCharts(snrDb, pathLossDb, selectedMod, isGood, obstacle, dist, latMs, tputKbps, postBer, obsLossDb) {
-            drawBerLiveCanvas(snrDb, selectedMod, dist, postBer);
-            drawSnrLiveCanvas(snrDb, pathLossDb, dist, obstacle, obsLossDb, isGood, selectedMod);
+        function drawLiveCharts(snrDb, pathLossDb, selectedMod, isGood, obstacle, dist, latMs, tputKbps, postBer, obsLossDb, comparisonData) {
+            drawBerLiveCanvas(snrDb, selectedMod, dist, postBer, isGood, comparisonData);
+            drawSnrLiveCanvas(snrDb, pathLossDb, dist, obstacle, obsLossDb, isGood, selectedMod, comparisonData);
             drawLatLiveCanvas(latMs, selectedMod, dist);
             drawTputLiveCanvas(tputKbps, selectedMod, dist, snrDb);
         }
 
-        // 1. LIVE BER VS SNR CANVAS
-        function drawBerLiveCanvas(snrDb, selectedMod, dist, postBer) {
+        // 1. LIVE BER CANVAS: COMPARISON BAR GRAPH ON POOR CHANNEL, CURVE ON GOOD
+        function drawBerLiveCanvas(snrDb, selectedMod, dist, postBer, isGood, comparisonData) {
             const canvas = document.getElementById('canvasBerLive');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             const W = canvas.width;
             const H = canvas.height;
+            const titleEl = document.getElementById('chart1Title');
+
+            if (!isGood && comparisonData) {
+                if (titleEl) titleEl.innerHTML = '📉 <strong>BER Comparison — Poor VLC Channel</strong>';
+
+                ctx.fillStyle = '#090d16';
+                ctx.fillRect(0, 0, W, H);
+
+                // Title
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = 'bold 11px -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('BER Comparison — Poor VLC Channel', W / 2, 16);
+
+                const padL = 52, padR = 20, padT = 32, padB = 32;
+                const pW = W - padL - padR;
+                const pH = H - padT - padB;
+
+                const ookBer = comparisonData.ookBer;
+                const bpskBer = comparisonData.bpskBer;
+                const maxBer = Math.max(0.005, Math.max(ookBer, bpskBer) * 1.35);
+
+                // Gridlines & Y-axis labels
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 1;
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '9px Consolas, monospace';
+                ctx.textAlign = 'right';
+
+                for (let i = 0; i <= 4; i++) {
+                    const val = (maxBer * i) / 4.0;
+                    const y = padT + pH - (i / 4.0) * pH;
+                    ctx.beginPath();
+                    ctx.moveTo(padL, y);
+                    ctx.lineTo(padL + pW, y);
+                    ctx.stroke();
+                    ctx.fillText(val.toFixed(4), padL - 6, y + 3);
+                }
+
+                // Y-axis label: BER
+                ctx.save();
+                ctx.translate(14, padT + pH / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '10px -apple-system, sans-serif';
+                ctx.fillText('BER', 0, 0);
+                ctx.restore();
+
+                // X-axis categories: OOK + FEC and BPSK + FEC
+                const colWidth = pW * 0.28;
+                const x1 = padL + pW * 0.28;
+                const x2 = padL + pW * 0.72;
+
+                // Bar 1: OOK + FEC
+                const h1 = Math.max(3, (ookBer / maxBer) * pH);
+                const y1 = padT + pH - h1;
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillRect(x1 - colWidth / 2, y1, colWidth, h1);
+                ctx.strokeStyle = '#fbbf24';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(x1 - colWidth / 2, y1, colWidth, h1);
+
+                // Bar 2: BPSK + FEC
+                const h2 = Math.max(3, (bpskBer / maxBer) * pH);
+                const y2 = padT + pH - h2;
+                ctx.fillStyle = '#10b981';
+                ctx.fillRect(x2 - colWidth / 2, y2, colWidth, h2);
+                ctx.strokeStyle = '#34d399';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(x2 - colWidth / 2, y2, colWidth, h2);
+
+                // Values above bars
+                ctx.font = 'bold 9.5px Consolas, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillText(ookBer.toFixed(6), x1, Math.max(padT + 12, y1 - 5));
+                ctx.fillStyle = '#10b981';
+                ctx.fillText(bpskBer.toFixed(6), x2, Math.max(padT + 12, y2 - 5));
+
+                // X-axis category labels
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = 'bold 10px -apple-system, sans-serif';
+                ctx.fillText('OOK + FEC', x1, padT + pH + 18);
+                ctx.fillText('BPSK + FEC', x2, padT + pH + 18);
+
+                const badge = document.getElementById('badgeBerLive');
+                if (badge) {
+                    badge.innerText = `OOK: ${ookBer.toFixed(6)} | BPSK: ${bpskBer.toFixed(6)}`;
+                    badge.className = 'badge-op-point mod-bpsk';
+                }
+                return;
+            }
+
+            if (titleEl) titleEl.innerHTML = '📉 <strong>1. BER vs. Distance (OOK vs. BPSK+FEC)</strong>';
+            ctx.textAlign = 'left';
 
             ctx.fillStyle = '#090d16';
             ctx.fillRect(0, 0, W, H);
@@ -2869,13 +3164,107 @@
             }
         }
 
-        // 2. LIVE SNR & PATH LOSS VS DISTANCE CANVAS
-        function drawSnrLiveCanvas(snrDb, pathLossDb, dist, obstacle, obsLossDb, isGood, selectedMod) {
+        // 2. LIVE PACKET SUCCESS RATE / SNR CANVAS: COMPARISON BAR GRAPH ON POOR CHANNEL, CURVE ON GOOD
+        function drawSnrLiveCanvas(snrDb, pathLossDb, dist, obstacle, obsLossDb, isGood, selectedMod, comparisonData) {
             const canvas = document.getElementById('canvasSnrLive');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             const W = canvas.width;
             const H = canvas.height;
+            const titleEl = document.getElementById('chart2Title');
+
+            if (!isGood && comparisonData) {
+                if (titleEl) titleEl.innerHTML = '📈 <strong>Packet Success Rate Comparison — Poor VLC Channel</strong>';
+
+                ctx.fillStyle = '#090d16';
+                ctx.fillRect(0, 0, W, H);
+
+                // Title
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = 'bold 11px -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Packet Success Rate Comparison — Poor VLC Channel', W / 2, 16);
+
+                const padL = 48, padR = 20, padT = 32, padB = 32;
+                const pW = W - padL - padR;
+                const pH = H - padT - padB;
+
+                const ookSuccess = comparisonData.ookSuccess;
+                const bpskSuccess = comparisonData.bpskSuccess;
+
+                // Gridlines & Y-axis labels (0% to 100%)
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 1;
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '9px Consolas, monospace';
+                ctx.textAlign = 'right';
+
+                for (let pct = 0; pct <= 100; pct += 25) {
+                    const y = padT + pH - (pct / 100.0) * pH;
+                    ctx.beginPath();
+                    ctx.moveTo(padL, y);
+                    ctx.lineTo(padL + pW, y);
+                    ctx.stroke();
+                    ctx.fillText(`${pct}%`, padL - 6, y + 3);
+                }
+
+                // Y-axis label: Packet Success Rate (%)
+                ctx.save();
+                ctx.translate(14, padT + pH / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '10px -apple-system, sans-serif';
+                ctx.fillText('Packet Success Rate (%)', 0, 0);
+                ctx.restore();
+
+                // X-axis categories: OOK + FEC and BPSK + FEC
+                const colWidth = pW * 0.28;
+                const x1 = padL + pW * 0.28;
+                const x2 = padL + pW * 0.72;
+
+                // Bar 1: OOK + FEC
+                const h1 = Math.max(3, (ookSuccess / 100.0) * pH);
+                const y1 = padT + pH - h1;
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillRect(x1 - colWidth / 2, y1, colWidth, h1);
+                ctx.strokeStyle = '#fbbf24';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(x1 - colWidth / 2, y1, colWidth, h1);
+
+                // Bar 2: BPSK + FEC
+                const h2 = Math.max(3, (bpskSuccess / 100.0) * pH);
+                const y2 = padT + pH - h2;
+                ctx.fillStyle = '#10b981';
+                ctx.fillRect(x2 - colWidth / 2, y2, colWidth, h2);
+                ctx.strokeStyle = '#34d399';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(x2 - colWidth / 2, y2, colWidth, h2);
+
+                // Values above bars
+                ctx.font = 'bold 10px Consolas, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillText(`${ookSuccess.toFixed(1)}%`, x1, Math.max(padT + 12, y1 - 5));
+                ctx.fillStyle = '#10b981';
+                ctx.fillText(`${bpskSuccess.toFixed(1)}%`, x2, Math.max(padT + 12, y2 - 5));
+
+                // X-axis category labels
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = 'bold 10px -apple-system, sans-serif';
+                ctx.fillText('OOK + FEC', x1, padT + pH + 18);
+                ctx.fillText('BPSK + FEC', x2, padT + pH + 18);
+
+                const badge = document.getElementById('badgeSnrLive');
+                if (badge) {
+                    badge.innerText = `OOK: ${ookSuccess.toFixed(1)}% | BPSK: ${bpskSuccess.toFixed(1)}%`;
+                    badge.className = 'badge-op-point mod-bpsk';
+                }
+                return;
+            }
+
+            if (titleEl) titleEl.innerHTML = '📈 <strong>2. Packet Success (%) vs. Distance</strong>';
+            ctx.textAlign = 'left';
 
             ctx.fillStyle = '#090d16';
             ctx.fillRect(0, 0, W, H);
@@ -3286,14 +3675,54 @@
 
         // Comprehensive Animated Transmission Pipeline Sequence (Step-by-Step Flow)
         let isTransmitting = false;
-        function executeTransmission() {
+        async function executeTransmission() {
             if (isTransmitting) return;
             isTransmitting = true;
 
+            // Immediately put buzzer on standby during active transmission until Stage 7 verification
+            triggerCarBBuzzer(false);
+
             const dist = parseFloat(document.getElementById('sliderDist').value);
+            const env = document.getElementById('selEnvironment').value;
             const obstacle = document.getElementById('selObstacle').value;
+            const obsPos = document.getElementById('selObsPosition').value;
+            const obsSev = document.getElementById('selObsSeverity').value;
             const eventVal = document.getElementById('selSafetyEvent').value;
-            const modScheme = document.getElementById('valAdaptiveMod').innerText;
+            const customText = document.getElementById('txtCustomEvent').value;
+
+            // Always fetch/verify live result from /api/simulate for real physical simulation data
+            let simData = lastSimulationData;
+            try {
+                const response = await fetch('/api/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        distance: dist,
+                        environment: env,
+                        obstacle: obstacle,
+                        obstacle_severity: obsSev,
+                        obstacle_position: obsPos,
+                        safety_event: eventVal,
+                        custom_text: customText
+                    })
+                });
+                if (response.ok) {
+                    simData = await response.json();
+                    lastSimulationData = simData;
+                    applySimulationData(simData, { dist, env, obstacle, obsPos, obsSev, eventVal, customText });
+                }
+            } catch (e) {
+                console.warn("API fetch during transmission:", e);
+            }
+
+            if (!simData) {
+                simData = calculateSimulationModel(dist, env, obstacle, obsPos, obsSev, eventVal, customText);
+                lastSimulationData = simData;
+            }
+
+            const safetyMsg = (simData && simData.safety_message) ? simData.safety_message : 'BRAKE / SAFETY MESSAGE';
+            const selectedMod = (simData && simData.selected_modulation) ? simData.selected_modulation : 'BPSK + FEC';
+            const isGood = simData ? (simData.channel_quality === 'GOOD') : false;
 
             const progressLabel = document.getElementById('pipelineProgressLabel');
             const hudBanner = document.getElementById('txStepFlowBanner');
@@ -3308,17 +3737,20 @@
 
             // Reset all stepper steps
             for (let i = 1; i <= 10; i++) {
-                document.getElementById('step' + i).className = 'step-node';
+                const el = document.getElementById('step' + i);
+                if (el) el.className = 'step-node';
             }
 
-            hudBanner.style.display = 'flex';
-            hudBanner.style.opacity = '1';
+            if (hudBanner) {
+                hudBanner.style.display = 'flex';
+                hudBanner.style.opacity = '1';
+            }
             if (carBBubble) carBBubble.classList.remove('visible');
 
             const roadbed = document.getElementById('highwayRoadbed');
             const carA_X = 24;
             const carWidth = 130;
-            const roadWidth = roadbed.clientWidth || 600;
+            const roadWidth = roadbed ? (roadbed.clientWidth || 600) : 600;
             const minB_X = carA_X + carWidth + 80;
             const maxB_X = Math.max(minB_X + 60, roadWidth - carWidth - 24);
             const normDist = Math.min(1.0, Math.max(0.0, (dist - 0.5) / 29.5));
@@ -3332,61 +3764,75 @@
                 bullet.style.opacity = '0';
             }
 
-            let eventName = (eventVal === 'BRAKE_ALERT' || obstacle === 'pothole' || obstacle === 'animal') ? 'BRAKE_ALERT' : eventVal;
-
-            // STAGE 1 (0ms): Car A Hazard Detected & BRAKE_ALERT Generated
-            progressLabel.innerText = '1/7: HAZARD DETECTED -> GENERATING BRAKE_ALERT...';
-            pill.innerText = 'STEP 1: HAZARD DETECTED';
-            desc.innerText = `Car A Onboard Perception Detects ${obstacle !== 'none' ? obstacle.replace('_', ' ').toUpperCase() : 'HAZARD'} ➔ Generating ${eventName}`;
+            // STAGE 1 (0ms): Hazard Detected & BRAKE / SAFETY MESSAGE Generated
+            if (progressLabel) progressLabel.innerText = '1/7: HAZARD DETECTED -> GENERATING BRAKE / SAFETY MESSAGE...';
+            if (pill) pill.innerText = 'STEP 1: HAZARD DETECTED';
+            if (desc) desc.innerText = `Car A Onboard Perception Detects Hazard ➔ Generated Message: "${safetyMsg}"`;
             if (carABubble) {
-                carABubble.innerText = `🚨 ${eventName}`;
+                carABubble.innerText = `🚨 ${safetyMsg}`;
                 carABubble.classList.add('visible');
             }
-            document.getElementById('step1').className = 'step-node active';
+            const s1 = document.getElementById('step1');
+            if (s1) s1.className = 'step-node active';
 
-            setTimeout(() => {
+            transmissionTimeouts.push(setTimeout(() => {
                 // STAGE 2 (450ms): Channel Sensing & Adaptive Modulation Decision
-                progressLabel.innerText = '2/7: ML CHANNEL SENSING & MODULATION ADAPTATION...';
-                document.getElementById('step1').className = 'step-node completed';
-                document.getElementById('step2').className = 'step-node active';
-                document.getElementById('step3').className = 'step-node active';
-                pill.innerText = 'STEP 2: MODULATION ADAPTATION';
-                desc.innerText = `ML Channel Sensing ➔ Selected Modulation: ${modScheme}`;
-                if (carABubble) carABubble.innerText = `🧠 MOD: ${modScheme}`;
-            }, 450);
+                if (isGood) {
+                    if (progressLabel) progressLabel.innerText = '2/7: GOOD CHANNEL ➔ SELECTED METHOD: OOK + FEC';
+                    if (pill) pill.innerText = 'STEP 2: MODULATION SELECTION';
+                    if (desc) desc.innerText = `Good Optical Channel (LOS Clear) ➔ SELECTED METHOD: OOK + FEC`;
+                    if (carABubble) carABubble.innerText = `🧠 SELECTED: OOK + FEC`;
+                } else {
+                    if (progressLabel) progressLabel.innerText = '2/7: POOR CHANNEL — COMPARING MODULATIONS...';
+                    if (pill) pill.innerText = 'STEP 2: COMPARING MODULATIONS';
+                    if (desc) desc.innerText = `POOR CHANNEL — COMPARING MODULATIONS ➔ SELECTED METHOD: ${selectedMod}`;
+                    if (carABubble) carABubble.innerText = `🧠 SELECTED: ${selectedMod}`;
+                }
+                const s1 = document.getElementById('step1');
+                const s2 = document.getElementById('step2');
+                const s3 = document.getElementById('step3');
+                if (s1) s1.className = 'step-node completed';
+                if (s2) s2.className = 'step-node active';
+                if (s3) s3.className = 'step-node active';
+            }, 450));
 
-            setTimeout(() => {
+            transmissionTimeouts.push(setTimeout(() => {
                 // STAGE 3 (900ms): Digital Frame & FEC Encoding
-                progressLabel.innerText = '3/7: DIGITAL FRAMING & FEC ENCODING...';
-                document.getElementById('step2').className = 'step-node completed';
-                document.getElementById('step3').className = 'step-node completed';
-                document.getElementById('step4').className = 'step-node active';
-                pill.innerText = 'STEP 3: DIGITAL FRAMING & FEC';
-                desc.innerText = `Framing Bits: [1011 0100] + Rate 1/2 FEC + CRC-16 (0x3E19)`;
+                if (progressLabel) progressLabel.innerText = '3/7: FEC ENCODING (RATE 1/2 CONVOLUTIONAL)...';
+                const s2 = document.getElementById('step2');
+                const s3 = document.getElementById('step3');
+                const s4 = document.getElementById('step4');
+                if (s2) s2.className = 'step-node completed';
+                if (s3) s3.className = 'step-node completed';
+                if (s4) s4.className = 'step-node active';
+                if (pill) pill.innerText = 'STEP 3: FEC ENCODING';
+                if (desc) desc.innerText = `Framing Safety Bits + Rate 1/2 Convolutional FEC + CRC-16 Checksum`;
                 if (carABubble) carABubble.innerText = `📦 FEC ENCODED`;
-                if (bulletBits) bulletBits.innerText = (modScheme === 'OOK') ? '1011' : (modScheme.includes('OOK') ? 'OOK-FEC' : 'BPSK-FEC');
-            }, 900);
+                if (bulletBits) bulletBits.innerText = selectedMod.includes('BPSK') ? 'BPSK-FEC' : 'OOK-FEC';
+            }, 900));
 
-            setTimeout(() => {
-                // STAGE 4 (1350ms): LED Optical Data Pulse Generation
-                progressLabel.innerText = '4/7: LED HEADLIGHT EMITTING OPTICAL PULSES...';
-                document.getElementById('step4').className = 'step-node completed';
-                document.getElementById('step5').className = 'step-node active';
-                pill.innerText = 'STEP 4: LED HEADLIGHT TRANSMISSION';
-                desc.innerText = `Car A Headlight LED converts bit stream into high-speed optical pulses`;
-                if (carABubble) carABubble.innerText = `💡 LED PULSING (Tx)`;
+            transmissionTimeouts.push(setTimeout(() => {
+                // STAGE 4 (1350ms): Selected Modulation Applied to LED Pulses
+                if (progressLabel) progressLabel.innerText = `4/7: SELECTED MODULATION (${selectedMod}) -> LED EMITTING...`;
+                const s4 = document.getElementById('step4');
+                const s5 = document.getElementById('step5');
+                if (s4) s4.className = 'step-node completed';
+                if (s5) s5.className = 'step-node active';
+                if (pill) pill.innerText = 'STEP 4: LED/VLC TRANSMISSION';
+                if (desc) desc.innerText = `Car A Headlight LED emits optical pulses modulated with ${selectedMod}`;
+                if (carABubble) carABubble.innerText = `💡 LED (Tx): ${selectedMod}`;
                 if (ledGlow) ledGlow.style.transform = 'scale(1.8)';
                 if (bullet) {
                     bullet.style.opacity = '1';
                     bullet.style.left = txLedX + "px";
                 }
-            }, 1350);
+            }, 1350));
 
-            setTimeout(() => {
+            transmissionTimeouts.push(setTimeout(() => {
                 // STAGE 5 (1800ms): Optical Wireless Channel Propagation (Active Bullet Motion)
-                progressLabel.innerText = '5/7: OPTICAL WIRELESS WAVE PROPAGATION...';
-                pill.innerText = 'STEP 5: OPTICAL WIRELESS CHANNEL';
-                desc.innerText = `Visible Light Data Pulses Traveling Across Roadway (d = ${dist.toFixed(1)}m)`;
+                if (progressLabel) progressLabel.innerText = '5/7: OPTICAL WIRELESS WAVE PROPAGATION TO CAR B...';
+                if (pill) pill.innerText = 'STEP 5: OPTICAL PROPAGATION';
+                if (desc) desc.innerText = `Visible light data stream traveling across road to Car B (d = ${dist.toFixed(1)}m)`;
                 if (carABubble) carABubble.classList.remove('visible');
 
                 const startTime = performance.now();
@@ -3398,58 +3844,94 @@
                     const currentX = txLedX + progress * (rxPdX - txLedX);
                     if (bullet) bullet.style.left = currentX + "px";
 
-                    if (progress < 1.0) {
-                        requestAnimationFrame(stepBullet);
+                    if (progress < 1.0 && isTransmitting) {
+                        bulletAnimId = requestAnimationFrame(stepBullet);
                     }
                 }
-                requestAnimationFrame(stepBullet);
-            }, 1800);
+                bulletAnimId = requestAnimationFrame(stepBullet);
+            }, 1800));
 
-            setTimeout(() => {
-                // STAGE 6 (2700ms): Photodiode Arrival & Soft Demodulation
-                progressLabel.innerText = '6/7: PHOTODIODE RX CAPTURE & DEMODULATION...';
+            transmissionTimeouts.push(setTimeout(() => {
+                // STAGE 6 (2700ms): Car B Photodiode Capture & Demodulation
+                if (progressLabel) progressLabel.innerText = '6/7: CAR B PHOTODIODE DEMODULATION...';
                 if (bullet) bullet.style.opacity = '0';
                 if (ledGlow) ledGlow.style.transform = '';
-                document.getElementById('step5').className = 'step-node completed';
-                document.getElementById('step6').className = 'step-node active';
-                document.getElementById('step7').className = 'step-node active';
-                document.getElementById('step8').className = 'step-node active';
+                const s5 = document.getElementById('step5');
+                const s6 = document.getElementById('step6');
+                const s7 = document.getElementById('step7');
+                const s8 = document.getElementById('step8');
+                if (s5) s5.className = 'step-node completed';
+                if (s6) s6.className = 'step-node active';
+                if (s7) s7.className = 'step-node active';
+                if (s8) s8.className = 'step-node active';
                 
-                pill.innerText = 'STEP 6: PHOTODIODE RX & DEMODULATION';
-                desc.innerText = `Car B Photodiode captures photon stream ➔ Viterbi Soft Demodulation`;
+                if (pill) pill.innerText = 'STEP 6: DEMODULATION & FEC DECODING';
+                if (desc) desc.innerText = `Car B Photodiode captures photon stream ➔ Demodulation & Soft Viterbi Decoding`;
                 if (pdGlow) pdGlow.style.transform = 'scale(1.8)';
                 if (carBBubble) {
-                    carBBubble.innerText = `📡 CAPTURING PHOTONS...`;
+                    carBBubble.innerText = `📡 DEMODULATING...`;
                     carBBubble.classList.add('visible');
                 }
-            }, 2700);
+            }, 2700));
 
-            setTimeout(() => {
-                // STAGE 7 (3350ms): CRC Verify & Decoded BRAKE_ALERT Safety Activation
+            transmissionTimeouts.push(setTimeout(() => {
+                // STAGE 7 (3350ms): FEC Decode & Successful Packet Verification -> Display Message -> ACTIVATE BUZZER
                 if (pdGlow) pdGlow.style.transform = '';
-                document.getElementById('step6').className = 'step-node completed';
-                document.getElementById('step7').className = 'step-node completed';
-                document.getElementById('step8').className = 'step-node completed';
-                document.getElementById('step9').className = 'step-node completed';
-                document.getElementById('step10').className = 'step-node completed';
+                for (let i = 6; i <= 10; i++) {
+                    const el = document.getElementById('step' + i);
+                    if (el) el.className = 'step-node completed';
+                }
 
-                pill.innerText = 'STEP 7: DECODED BRAKE_ALERT VERIFIED';
-                desc.innerText = `CRC-16 Verified PASS! Car B Decodes ${eventName} ➔ Deceleration Activated!`;
-                if (carBBubble) carBBubble.innerText = `🚨 DECODED: ${eventName}!`;
-                progressLabel.innerText = 'DELIVERED & VERIFIED (CRC-16 PASS)';
+                if (pill) pill.innerText = 'STEP 7: PACKET VERIFIED — BUZZER ACTIVE';
+                if (desc) desc.innerText = `CRC-16 PASS! Decoded "${safetyMsg}" ➔ Car B Emergency Buzzer Activated!`;
+                if (carBBubble) carBBubble.innerText = `🚨 DECODED: ${safetyMsg}!`;
+                if (progressLabel) progressLabel.innerText = 'DELIVERED & VERIFIED (CRC-16 PASS)';
 
-                // Trigger Car B Buzzer Audio & Visual Alert strictly on Stage 7 (Decoded & Verified)
+                // Update Car B Safety Alert Box with EXACT required fields
+                const alertHead = document.getElementById('alertHeaderCategory');
+                const alertTitle = document.getElementById('alertEventTitle');
+                const alertAdvice = document.getElementById('alertAdvice');
+                const alertBox = document.getElementById('safetyAlertBox');
+                if (alertBox) alertBox.className = 'safety-alert-box emergency';
+                if (alertHead) alertHead.innerText = '🚨 EMERGENCY MESSAGE RECEIVED';
+                if (alertTitle) alertTitle.innerText = safetyMsg;
+                if (alertAdvice) {
+                    alertAdvice.innerText = `Car B successfully received & verified emergency transmission: "${safetyMsg}" via ${selectedMod}. Automatic collision avoidance triggered.`;
+                }
+
+                // Show all Car B received metrics (identical to Car A transmission)
+                const carBMsg = document.getElementById('carBRecvMsg');
+                const carBMod = document.getElementById('carBRecvMod');
+                const carBChan = document.getElementById('carBRecvChan');
+                const carBDist = document.getElementById('carBRecvDist');
+                const carBBer = document.getElementById('carBRecvBer');
+                const carBSucc = document.getElementById('carBRecvSuccess');
+                if (carBMsg) carBMsg.innerText = safetyMsg;
+                if (carBMod) carBMod.innerText = selectedMod;
+                if (carBChan) carBChan.innerText = (simData && simData.channel_quality) ? simData.channel_quality : (isGood ? 'GOOD' : 'POOR');
+                if (carBDist) carBDist.innerText = dist.toFixed(2) + ' m';
+                if (carBBer) carBBer.innerText = (simData && simData.ber !== undefined) ? simData.ber.toFixed(6) : '0.000000';
+                if (carBSucc) carBSucc.innerText = (simData && simData.packet_success_rate !== undefined) ? simData.packet_success_rate.toFixed(1) + '%' : '100.0%';
+
+                const binaryStr = (simData && simData.binary_payload) ? simData.binary_payload : textToBinary(safetyMsg);
+                const carBBin = document.getElementById('carBRecvBinary');
+                if (carBBin) carBBin.innerText = binaryStr;
+                const dumpBin = document.getElementById('dumpBinaryBits');
+                if (dumpBin) dumpBin.innerText = binaryStr;
+
+                // Turn ON the simulated buzzer/alert strictly after successful reception/decoding
                 triggerCarBBuzzer(true);
 
                 isTransmitting = false;
-                updateSimulationState();
 
-                setTimeout(() => {
+                transmissionTimeouts.push(setTimeout(() => {
                     if (carBBubble) carBBubble.classList.remove('visible');
-                    hudBanner.style.opacity = '0';
-                    setTimeout(() => { hudBanner.style.display = 'none'; }, 400);
-                }, 2400);
-            }, 3350);
+                    if (hudBanner) {
+                        hudBanner.style.opacity = '0';
+                        setTimeout(() => { hudBanner.style.display = 'none'; }, 400);
+                    }
+                }, 2600));
+            }, 3350));
         }
 
         // Initialize on page load
