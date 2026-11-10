@@ -3,10 +3,20 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11-3776AB.svg?logo=python&logoColor=white)](https://www.python.org)
 [![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-1.9.1-F7931E.svg?logo=scikit-learn&logoColor=white)](https://scikit-learn.org)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/raghukumarkanadhibolta-maker/vlc-v2v-communication)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **Intelligent Vehicle-to-Vehicle (V2V) Safety Communication & Dynamic Physical-Layer Link Adaptation Framework**  
 > An interactive, production-ready system providing physical optical channel modeling, real-time ML channel sensing, adaptive modulation selection (`OOK + FEC` vs. `BPSK + FEC`), Car A $\rightarrow$ Car B optical packet streaming, and Car B audio-visual emergency buzzer alert decoding.
+
+---
+
+### 🌐 Live Public Access Links
+
+- **Live Web Application (Cloudflare Global Edge)**: [https://camp-miller-featuring-solution.trycloudflare.com](https://camp-miller-featuring-solution.trycloudflare.com)
+- **Interactive OpenAPI / Swagger Documentation**: [https://camp-miller-featuring-solution.trycloudflare.com/docs](https://camp-miller-featuring-solution.trycloudflare.com/docs)
+- **Backend Health Check**: [https://camp-miller-featuring-solution.trycloudflare.com/health](https://camp-miller-featuring-solution.trycloudflare.com/health)
+- **Permanent Render Deployment Blueprint**: [Deploy to Render with 1-Click](https://render.com/deploy?repo=https://github.com/raghukumarkanadhibolta-maker/vlc-v2v-communication)
 
 ---
 
