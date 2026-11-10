@@ -34,3 +34,7 @@ ehthumbs.db
 *.pem
 *.key
 credentials.json
+
+# Local Backups
+backup_pre_upgrade/
+
